@@ -55,7 +55,7 @@ If this prints nothing, the port is free. If it prints a line, log out and start
 Create an environment with MNE and the converter:
 
 ```bash
-conda create -n pygers-meg -c conda-forge python=3.11 mne jupyterlab pandas ipykernel
+conda create -n pygers-meg -c conda-forge python=3.11 mne jupyterlab pandas ipykernel ipympl
 conda activate pygers-meg
 pip install "cmeg2fif[plot] @ git+https://github.com/mrribbits/cMEG2FIF-Scully.git"
 ```
@@ -91,7 +91,7 @@ Press **Ctrl-C twice** in the scotty session. If you ever leave a server running
 Create an environment with MNE and the converter:
 
 ```bash
-conda create -n pygers-meg -c conda-forge python=3.11 mne jupyterlab pandas
+conda create -n pygers-meg -c conda-forge python=3.11 mne jupyterlab pandas ipympl
 conda activate pygers-meg
 pip install "cmeg2fif[plot] @ git+https://github.com/mrribbits/cMEG2FIF-Scully.git"
 ```
