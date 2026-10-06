@@ -5,8 +5,7 @@ Jupyter notebooks from the Pygers-MEG user group.
 | Notebook | What it covers |
 |---|---|
 | [`01-explore-raw-files/01_Explore_Raw_OPM-MEG_Files.ipynb`](01-explore-raw-files/01_Explore_Raw_OPM-MEG_Files.ipynb) | Exploring raw Cerca `.cMEG` sessions, converting them to FIF with [cMEG2FIF](https://github.com/mrribbits/cMEG2FIF-Scully), and checking the result |
-| 01-explore-raw-files/02_Explore_Eye_Files.ipynb | TBD |
-| 01-explore-raw-files/03_Explore_MRI_Files.ipynb | TBD |
+| 01-explore-raw-files/02_Explore_Eye_and_MRI_Files.ipynb | TBD |
 
 ---
 
