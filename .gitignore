@@ -1,0 +1,12 @@
+# never commit data or scratch copies
+backup/
+**/backup/
+*.cMEG
+*.fif
+*.ply
+*.tsv
+*.edf
+*.asc
+data/
+.ipynb_checkpoints/
+.DS_Store
