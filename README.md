@@ -21,6 +21,35 @@ git clone https://github.com/mrribbits/pygers-meg.git
 
 **Or download a single notebook:** open it on GitHub and click **Download raw file**.
 
+### Work in your own copy
+
+Before running a notebook, make a personal copy and work in that instead of the original:
+
+```bash
+cd pygers-meg/01-explore-raw-files
+cp 01_Explore_Raw_OPM-MEG_Files.ipynb my_01_Explore_Raw_OPM-MEG_Files.ipynb
+```
+
+Running a notebook saves outputs into the file. Working in a `my_` copy keeps the original unchanged, so updates always pull cleanly and your notes and outputs are never overwritten. Git ignores files starting with `my_`.
+
+### Updating
+
+To get new notebooks and fixes, run this in your clone:
+
+```bash
+cd pygers-meg
+git pull
+```
+
+If `git pull` stops with *"Your local changes … would be overwritten by merge"*, you edited or ran an original notebook. Discard those changes (keep anything you want in a `my_` copy first), then pull again:
+
+```bash
+git restore 01-explore-raw-files/01_Explore_Raw_OPM-MEG_Files.ipynb
+git pull
+```
+
+After an update, make a fresh `my_` copy of any notebook that changed. Your old copy won't pick up the changes.
+
 ---
 
 ## 0. Setup

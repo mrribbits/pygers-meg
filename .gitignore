@@ -10,3 +10,6 @@ backup/
 data/
 .ipynb_checkpoints/
 .DS_Store
+
+# users' personal working copies of notebooks
+my_*.ipynb
