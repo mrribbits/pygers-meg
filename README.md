@@ -113,7 +113,7 @@ conda --help
 Create an environment with MNE and the converter:
 
 ```bash
-conda create -n pygers-meg -c conda-forge python=3.11 mne jupyterlab pandas ipykernel ipympl
+conda create -n pygers-meg -c conda-forge python=3.11 mne mne-bids jupyterlab pandas ipykernel ipympl
 conda activate pygers-meg
 pip install "cmeg2fif[plot] @ git+https://github.com/mrribbits/cMEG2FIF-Scully.git"
 ```
