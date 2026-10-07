@@ -80,6 +80,36 @@ If this prints nothing, the port is free. If it prints a line, log out and start
 
 #### 0.1.2 Create the conda environment (do this once, on scotty)
 
+##### 0.1.2.1 Install miniconda (if you have already installed/used conda on the server, skip this step)
+You should install miniconda in your folder on your lab directory so that you do not run out of space in your home directory. You can then create a symlink in your home directory.
+
+```bash
+cd /jukebox/<lab>/<personal folder>
+
+#download
+wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
+
+#install
+bash Miniconda3-latest-Linux-x86_64.sh
+
+#if you don't want this base environment automatically loaded when you login:
+conda config --set auto_activate_base false
+source .bashrc
+
+#remove install file
+rm -r Miniconda3-latest-Linux-x86_64.sh
+
+#create symlink in home directory
+ln -s /jukebox/<lab>/<personal folder>/miniconda3 ~/.miniconda3
+
+#check your setup
+cd ~
+conda info
+conda env list
+conda --help
+```
+
+##### 0.1.2.2 Create pygers-meg conda environment
 Create an environment with MNE and the converter:
 
 ```bash
