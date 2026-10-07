@@ -110,7 +110,8 @@ conda --help
 ```
 
 ##### 0.1.2.2 Create pygers-meg conda environment
-Create an environment with MNE and the converter:
+
+###### 0.1.2.2.1 Either create the environment from scratch:
 
 ```bash
 conda create -n pygers-meg -c conda-forge python=3.11 mne mne-bids jupyterlab pandas ipykernel ipympl mne-bids
@@ -118,12 +119,18 @@ conda activate pygers-meg
 pip install "cmeg2fif[plot] @ git+https://github.com/mrribbits/cMEG2FIF-Scully.git"
 ```
 
-Check that the converter installed:
+###### 0.1.2.2.2 Or use the provided scotty-environment.yml file:
+
+```bash
+conda env create -f scotty-environment.yml -n pygers-meg
+conda activate pygers-meg
+```
+
+###### 0.1.2.2.3 Check that the converter installed:
 
 ```bash
 cmeg2fif --version
 ```
-
 On later sessions, you only need `conda activate pygers-meg`.
 
 #### 0.1.3 Launch Jupyter on scotty
@@ -144,9 +151,7 @@ Press **Ctrl-C twice** in the scotty session. If you ever leave a server running
 
 ### 0.2 Option B: Local laptop setup
 
-#### 0.2.1 Create the Python environment (do this once, in your Terminal)
-
-Create an environment with MNE and the converter:
+#### 0.2.1 Create the Python environment
 
 ```bash
 conda create -n pygers-meg -c conda-forge python=3.11 mne jupyterlab pandas ipympl mne-bids
@@ -154,7 +159,7 @@ conda activate pygers-meg
 pip install "cmeg2fif[plot] @ git+https://github.com/mrribbits/cMEG2FIF-Scully.git"
 ```
 
-Check that the converter installed:
+#### 0.2.2 Check that the converter installed:
 
 ```bash
 cmeg2fif --version
@@ -162,7 +167,7 @@ cmeg2fif --version
 
 To start Jupyter, run `conda activate pygers-meg` and then `jupyter lab`.
 
-#### 0.2.2 Mount your `cup` lab partition
+#### 0.2.3 Mount your `cup` lab partition
 
 All data stay on the server: **do not copy them to your laptop.** Mount the server instead:
 
