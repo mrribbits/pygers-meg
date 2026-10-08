@@ -1,0 +1,71 @@
+%%{init: {"fontFamily": "arial, helvetica, sans-serif", "flowchart": {"wrappingWidth": 600, "padding": 34, "nodeSpacing": 30, "rankSpacing": 70, "htmlLabels": true}, "themeVariables": {"fontFamily": "arial, helvetica, sans-serif", "clusterBkg": "#fafafa", "clusterBorder": "#bbbbbb", "fontSize": "15px"}, "themeCSS": ".node .nodeLabel, .node foreignObject div { text-align: left !important; white-space: nowrap !important; } foreignObject { overflow: visible; } .cluster-label .nodeLabel { font-weight: bold; } .req { background:#ffd3cc; } .rec { background:#fff0b3; }"}}%%
+flowchart LR
+    subgraph FIF["FIF written by cMEG2fif v2.15 (read with mne.io.read_raw_fif, preload=False)"]
+        direction TB
+        FDATA["<b>FIF data</b> — raw.get_data()<br/>• all channels → copied unchanged into sub-…_meg.fif<br/>• raw.n_times, raw.first_samp → RecordingDuration, event onsets and samples"]
+        FNAME["<b>File name</b> raw.filenames[0]<br/>• extension .fif → Manufacturer 'Elekta' (MNE-BIDS lookup table)<br/>• extension .fif → MEGCoordinateSystem 'ElektaNeuromag', units 'm'"]
+        FREC["<b>FIF info — recording</b> (raw.info[...])<br/>• info['sfreq'] → SamplingFrequency, sampling_frequency, event onsets<br/>• info['line_freq'] → PowerLineFrequency (MNE-BIDS stops if the key is missing)<br/>• info['meas_date'] → scans.tsv acq_time, participants age<br/>   (and the session label for the sub-emptyroom layout)<br/>• info['highpass'] → channels.tsv low_cutoff (0.0 = MNE default)<br/>• info['lowpass'] → channels.tsv high_cutoff (600.0 = Nyquist default)<br/>• info['comps'] → SoftwareFilters GradientOrder (0 = no compensation)<br/>• info['subject_info'] → participants.tsv age, sex, hand, weight, height"]
+        FCHS["<b>FIF info — channels</b> (raw.info['chs'][i], raw.info['bads'])<br/>• info['chs'][i]['ch_name'] → channels.tsv name<br/>• info['chs'][i]['coil_type'], then ['kind'] → channels.tsv type<br/>• info['chs'][i]['kind'] → _meg.json channel counts, channels.tsv description<br/>• info['chs'][i]['unit'] → channels.tsv units (T; V for stim and misc)<br/>• info['bads'] → channels.tsv status"]
+        FDIG["<b>FIF info — digitisation</b> (subject runs only)<br/>• info['dig'] NAS, LPA, RPA → DigitizedLandmarks,<br/>   coordsystem AnatomicalLandmarkCoordinates and HeadCoilCoordinates<br/>• info['dig'] head-shape points → DigitizedHeadPoints"]
+        FUNUSED["<b>FIF info — not read by MNE-BIDS</b><br/><i>Copied into the BIDS FIF only; no sidecar uses them:</i><br/>• info['device_info'] = {'type': 'Cerca', 'model': 'cMEG'}<br/>• info['experimenter'] (operator name), info['description']<br/>• info['dev_head_t'], info['chs'][i]['loc'], info['chs'][i]['coord_frame']<br/>• info['gantry_angle'], info['hpi_*'], info['projs'], info['proc_history']"]
+    end
+
+    ARGS["<b>write_raw_bids() arguments</b> (set in the notebook)<br/>• bids_path: sub, ses, task, run, root → file names, TaskName,<br/>   scans.tsv filename, participant_id<br/>• events: array from mne.find_events(raw, 'STI101') → events.tsv onset, sample, value<br/>   (without events, MNE-BIDS uses raw.annotations instead)<br/>• event_id: name → code → events.tsv trial_type<br/>• empty_room: BIDSPath of the task-noise run → AssociatedEmptyRoom<br/>• overwrite, allow_preload, format → how the files are written"]
+
+    CONV(("<div style='text-align:center'><b>MNE-BIDS</b><br/>write_raw_bids()</div>"))
+
+    subgraph DS["Dataset-level outputs (BIDS root)"]
+        direction TB
+        ODD["<b>dataset_description.json</b><br/><i>MNE-BIDS default</i> (re-added each time write_raw_bids runs):<br/><span class='req'>• Name = '[Unspecified]' — REQUIRED: placeholder, give the dataset a name</span><br/>• BIDSVersion = '1.9.0' (REQUIRED, filled), DatasetType = 'raw'<br/><span class='rec'>• Authors = ['[Unspecified1]', '[Unspecified2]'] — RECOMMENDED unless CITATION.cff lists them</span><br/>• GeneratedBy = MNE-BIDS 0.20.0<br/><i>Not written:</i><br/><span class='rec'>• License — RECOMMENDED: fill</span>"]
+        ORM["<b>README</b><br/><i>MNE-BIDS default:</i><br/><span class='rec'>• reference list only (MNE-BIDS and MEG-BIDS papers) — README is RECOMMENDED: describe the dataset</span>"]
+        OPART["<b>participants.tsv + participants.json</b><br/><i>From the arguments:</i><br/>• participant_id ← bids_path.subject<br/><i>From the FIF:</i><br/>• age ← info['subject_info'] birthday + info['meas_date']; sex, hand, weight, height ← info['subject_info']<br/><span class='rec'>• age, sex, hand, weight, height all n/a (subject_info is empty) — OPTIONAL: fill from your records</span><br/><i>MNE-BIDS default:</i><br/>• participants.json = stock text for the 6 columns"]
+        ONOT["<b>Not written</b><br/><span class='rec'>• CHANGES — OPTIONAL: version history of the dataset</span><br/><span class='rec'>• LICENSE — OPTIONAL: full license text</span><br/><span class='rec'>• CITATION.cff — OPTIONAL: how to cite; if present, it replaces Authors in dataset_description.json</span><br/><span class='rec'>• task-&lt;label&gt;_meg.json — OPTIONAL: top-level sidecar, inherited by every recording of the task</span>"]
+    end
+
+    subgraph REC["Recording-level outputs (sub-001/ses-01/meg/)"]
+        direction TB
+        OFIF["<b>sub-…_meg.fif</b> (split-01, split-02, … above 2 GB)<br/><i>From the FIF:</i><br/>• data ← FIF data, unchanged<br/>• header ← all of FIF info, including in-memory edits made before writing"]
+        OJSON["<b>sub-…_meg.json</b><br/><i>From the FIF:</i><br/>• SamplingFrequency ← info['sfreq']<br/>• PowerLineFrequency ← info['line_freq']<br/>• RecordingDuration ← time of the last sample<br/>• MEGChannelCount, MEGREFChannelCount, MiscChannelCount,<br/>   TriggerChannelCount, EEG/EOG/ECG/EMGChannelCount ← info['chs'][i]['kind']<br/>• DigitizedLandmarks ← info['dig'] fiducials<br/>• DigitizedHeadPoints ← info['dig'] head-shape points<br/><i>From the arguments:</i><br/>• TaskName ← bids_path.task<br/><span class='rec'>• AssociatedEmptyRoom ← empty_room — RECOMMENDED: plain path is deprecated, use a bids:: URI</span><br/><i>MNE-BIDS default:</i><br/><span class='rec'>• Manufacturer = 'Elekta' (from the .fif extension) — RECOMMENDED: for MEG must be one of the BIDS list → 'Other'</span><br/><span class='req'>• DewarPosition = 'n/a' — REQUIRED: set 'upright', 'supine' or an angle</span><br/><span class='req'>• SoftwareFilters = {'SpatialCompensation': {'GradientOrder': 0}} — REQUIRED: describes a CTF filter; set 'n/a' or the real filters</span><br/>• RecordingType = 'continuous'<br/><i>Not written:</i><br/><span class='rec'>• ManufacturersModelName, SoftwareVersions, DeviceSerialNumber, HardwareFilters — RECOMMENDED: fill</span><br/><span class='rec'>• TaskDescription, Instructions, InstitutionName / Address / DepartmentName — RECOMMENDED: fill</span><br/>• ContinuousHeadLocalization, HeadCoilFrequency (written only for Elekta, CTF, KIT; no head coils on OPM)"]
+        OCH["<b>sub-…_channels.tsv</b> (one row per channel)<br/><i>From the FIF:</i><br/>• name ← info['chs'][i]['ch_name']<br/><span class='req'>• type ← coil_type first, then kind — REQUIRED: 3N/3O reference sensors come out MEGMAG, set MEGREFMAG</span><br/>• units ← info['chs'][i]['unit'] (T for MEG and reference, V for stim and misc)<br/><span class='rec'>• low_cutoff ← info['highpass'] — OPTIONAL: 0.0 is a default, not a filter</span><br/><span class='rec'>• high_cutoff ← info['lowpass'] — OPTIONAL: 600.0 is Nyquist, not a filter</span><br/>• sampling_frequency ← info['sfreq']<br/>• status ← info['bads']<br/><i>MNE-BIDS default:</i><br/>• description = generic text per type ('Magnetometer', 'Trigger', …)<br/>• status_description = n/a<br/><i>Not written:</i> notch, software_filters columns; _channels.json"]
+        OCOORD["<b>sub-…_coordsystem.json</b> (one per session, no task entity)<br/><i>From the FIF:</i><br/>• AnatomicalLandmarkCoordinates ← info['dig'] NAS, LPA, RPA<br/>• HeadCoilCoordinates ← the same fiducials (OPMs have no head coils)<br/><i>MNE-BIDS default (from the .fif extension):</i><br/>• MEGCoordinateSystem, HeadCoilCoordinateSystem,<br/>   AnatomicalLandmarkCoordinateSystem = 'ElektaNeuromag'<br/>• MEGCoordinateUnits, HeadCoilCoordinateUnits,<br/>   AnatomicalLandmarkCoordinateUnits = 'm'<br/>• MEGCoordinateSystemDescription = stock text for ElektaNeuromag"]
+        OEV["<b>sub-…_events.tsv + _events.json</b> (task runs only)<br/><i>From the arguments (with the FIF timing):</i><br/>• onset ← (events sample − raw.first_samp) / info['sfreq']<br/>• sample ← events sample − raw.first_samp<br/>• value ← events code<br/>• trial_type ← event_id name for that code<br/><i>MNE-BIDS default:</i><br/>• duration = 0 (impulse events)<br/>• _events.json = stock column descriptions, no Levels"]
+        OSCANS["<b>sub-…_scans.tsv</b> (one row per file in the session)<br/><i>From the arguments:</i><br/>• filename ← bids_path (each split file listed)<br/><i>From the FIF:</i><br/>• acq_time ← info['meas_date'] (n/a if missing)"]
+        OER["<b>Empty-room run</b> (task-noise)<br/>• same files from the same rules, except:<br/>• no _events.tsv / _events.json<br/>• no AssociatedEmptyRoom<br/>• DigitizedLandmarks / DigitizedHeadPoints = false (no --dig)"]
+    end
+
+    KEY["<b>Legend</b><br/><span class='req'><b>Red:</b> BIDS REQUIRED, and MNE-BIDS writes a placeholder or a wrong value.</span><br/><span class='req'>   Uses BIDS schema v1.11.2, MEG section. You must set them.</span><br/><span class='rec'><b>Yellow:</b> BIDS RECOMMENDED or OPTIONAL, and wrong or empty.</span><br/><span class='rec'>   You should correct or fill them.</span><br/>No highlight: filled correctly by MNE-BIDS, or optional and fine left out.<br/><i>REQUIRED / RECOMMENDED / OPTIONAL are BIDS levels, not MNE-BIDS rules. MNE-BIDS itself only needs<br/>   a .fif file, an info['line_freq'] entry, and meas_date for the sub-emptyroom layout.</i>"]
+
+    KEY ~~~ CONV
+    FDATA --> CONV
+    FNAME --> CONV
+    FREC --> CONV
+    FCHS --> CONV
+    FDIG --> CONV
+    FUNUSED --> CONV
+    ARGS --> CONV
+    CONV --> ODD
+    CONV --> ORM
+    CONV --> OPART
+    CONV --> ONOT
+    CONV --> OFIF
+    CONV --> OJSON
+    CONV --> OCH
+    CONV --> OCOORD
+    CONV --> OEV
+    CONV --> OSCANS
+    CONV --> OER
+
+    classDef fif fill:#f4f4f4,stroke:#555,color:#111
+    classDef unused fill:#fafafa,stroke:#999,stroke-dasharray:5 4,color:#111
+    classDef args fill:#f3eefa,stroke:#6c4ea0,color:#111
+    classDef conv fill:#ffffff,stroke:#111,stroke-width:2px,color:#111
+    classDef bids fill:#e9f5f2,stroke:#2e7d6e,color:#111
+    classDef note fill:#ffffff,stroke:#2e7d6e,stroke-dasharray:5 4,color:#111
+    class FDATA,FNAME,FREC,FCHS,FDIG fif
+    class FUNUSED unused
+    class ARGS args
+    class CONV conv
+    class OFIF,OJSON,OCH,OCOORD,OEV,OSCANS,ODD,ORM,OPART bids
+    class OER,ONOT note
+    classDef key fill:#ffffff,stroke:#111,color:#111
+    class KEY key
