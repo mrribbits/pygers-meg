@@ -517,7 +517,9 @@ dependencies:
   - zlib-ng=2.3.3=hce19668_1
   - zstd=1.5.7=hb78ec9c_7
   - pip:
-      - cmeg2fif @ git+https://github.com/mrribbits/cMEG2FIF-Scully.git@9dbb5708c1e07c679dfc054b506238845172084c
+      - cmeg2fif @ git+https://github.com/mrribbits/cMEG2FIF-Scully.git@a51c51c2666f591990716d24258b89ab09cf529b  # v2.15
+      - bids-validator-deno==3.0.2
+      - deno==2.9.7
       - pyqt6==6.11.0
       - pyqt6-qt6==6.11.2
       - pyqt6-sip==13.13.0
