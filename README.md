@@ -7,6 +7,8 @@ Jupyter notebooks from the Pygers-MEG user group.
 | [`01-explore-raw-files/01_Explore_Raw_OPM-MEG_Files.ipynb`](01-explore-raw-files/01_Explore_Raw_OPM-MEG_Files.ipynb) | Exploring raw Cerca `.cMEG` sessions, converting them to FIF with [cMEG2FIF](https://github.com/mrribbits/cMEG2FIF-Scully), and checking the result |
 |---|---|
 | [`01-explore-raw-files/02_Explore_Eye_Data_Files.ipynb`](01-explore-raw-files/02_Explore_Eye_Data_Files.ipynb) | Converting raw `.EDF` files to BIDS with [edf2bids](https://github.com/mrribbits/eye2bids/tree/scully-config), and checking the result |
+|---|---|
+| [`01-explore-raw-files/03_Dicom_to_BIDS_heudiconv.ipynb`](01-explore-raw-files/03_Dicom_to_BIDS_heudiconv.ipynb) | Converting DICOM files to NIFTI BIDS with [HeuDiConv](https://heudiconv.readthedocs.io/en/latest/), and checking the result |
 ---
 
 ## Getting the notebooks
