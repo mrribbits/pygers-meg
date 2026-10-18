@@ -118,7 +118,6 @@ conda --help
 conda create -n pygers-meg -c conda-forge python=3.11 mne mne-bids jupyterlab pandas ipykernel ipympl
 conda activate pygers-meg
 pip install "cmeg2fif[plot] @ git+https://github.com/mrribbits/cMEG2FIF-Scully.git"
-pip install bids-validator-deno
 ```
 
 ###### 0.1.2.2.2 Or use the provided scotty-environment.yml file:
@@ -128,11 +127,10 @@ conda env create -f scotty-environment.yml -n pygers-meg
 conda activate pygers-meg
 ```
 
-###### 0.1.2.2.3 Check that the converter and the BIDS validator installed:
+###### 0.1.2.2.3 Check that the converter installed:
 
 ```bash
 cmeg2fif --version
-bids-validator-deno --version
 ```
 
 On later sessions, you only need `conda activate pygers-meg`.
@@ -161,14 +159,12 @@ Press **Ctrl-C twice** in the scotty session. If you ever leave a server running
 conda create -n pygers-meg -c conda-forge python=3.11 mne jupyterlab pandas ipympl mne-bids
 conda activate pygers-meg
 pip install "cmeg2fif[plot] @ git+https://github.com/mrribbits/cMEG2FIF-Scully.git"
-pip install bids-validator-deno
 ```
 
-#### 0.2.2 Check that the converter and the BIDS validator installed:
+#### 0.2.2 Check that the converter installed:
 
 ```bash
 cmeg2fif --version
-bids-validator-deno --version
 ```
 
 To start Jupyter, run `conda activate pygers-meg` and then `jupyter lab`.
@@ -181,15 +177,6 @@ All data stay on the server: **do not copy them to your laptop.** Mount the serv
 - **Windows:** In File Explorer, choose *Map network drive*.
 
 ---
-
-## Validating a BIDS dataset
-
-The environment includes the official [BIDS Validator](https://github.com/bids-standard/bids-validator) as the `bids-validator-deno` command. It runs from the terminal (or from a notebook cell with `!`) on the BIDS root folder:
-
-```bash
-conda activate pygers-meg
-bids-validator-deno /path/to/bids_root
-```
 
 - **Errors** mean the dataset isn't valid BIDS and must be fixed. **Warnings** are recommended fields or files that are missing. They're worth reading, but the dataset is still valid.
 - `--ignoreWarnings` shows errors only.
