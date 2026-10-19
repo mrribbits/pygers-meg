@@ -178,6 +178,7 @@ All data stay on the server: **do not copy them to your laptop.** Mount the serv
 - **macOS:** In Finder, choose *Go → Connect to Server…*
 - **Windows:** In File Explorer, choose *Map network drive*.
 
+
 ---
 
 ---
