@@ -120,7 +120,6 @@ conda --help
 conda create -n pygers-meg -c conda-forge python=3.11 mne mne-bids jupyterlab pandas ipykernel ipympl
 conda activate pygers-meg
 pip install "cmeg2fif[plot] @ git+https://github.com/mrribbits/cMEG2FIF-Scully.git"
-pip install bids-validator-deno
 ```
 
 ###### 0.1.2.2.2 Or use the provided scotty-environment.yml file:
@@ -130,11 +129,10 @@ conda env create -f scotty-environment.yml -n pygers-meg
 conda activate pygers-meg
 ```
 
-###### 0.1.2.2.3 Check that the converter and the BIDS validator installed:
+###### 0.1.2.2.3 Check that the converter installed:
 
 ```bash
 cmeg2fif --version
-bids-validator-deno --version
 ```
 
 On later sessions, you only need `conda activate pygers-meg`.
@@ -163,14 +161,12 @@ Press **Ctrl-C twice** in the scotty session. If you ever leave a server running
 conda create -n pygers-meg -c conda-forge python=3.11 mne jupyterlab pandas ipympl mne-bids
 conda activate pygers-meg
 pip install "cmeg2fif[plot] @ git+https://github.com/mrribbits/cMEG2FIF-Scully.git"
-pip install bids-validator-deno
 ```
 
-#### 0.2.2 Check that the converter and the BIDS validator installed:
+#### 0.2.2 Check that the converter installed:
 
 ```bash
 cmeg2fif --version
-bids-validator-deno --version
 ```
 
 To start Jupyter, run `conda activate pygers-meg` and then `jupyter lab`.
@@ -184,18 +180,50 @@ All data stay on the server: **do not copy them to your laptop.** Mount the serv
 
 ---
 
-## Validating a BIDS dataset
+---
 
-The environment includes the official [BIDS Validator](https://github.com/bids-standard/bids-validator) as the `bids-validator-deno` command. It runs from the terminal (or from a notebook cell with `!`) on the BIDS root folder:
+## 1. Streamlining Cluster Access
 
+### 1.1 Set up SSH key authentication (passwordless SSH login)
+
+#### 1.1.1 From your Mac's Terminal:
 ```bash
-conda activate pygers-meg
-bids-validator-deno /path/to/bids_root
+ssh-keygen -t ed25519 -C "my-mac"           # accept defaults; set a passphrase
+ssh-copy-id NETID@scotty.pni.princeton.edu  # the last time you type your password
 ```
 
-- **Errors** mean the dataset isn't valid BIDS and must be fixed. **Warnings** are recommended fields or files that are missing. They're worth reading, but the dataset is still valid.
-- `--ignoreWarnings` shows errors only.
-- `--format json_pp > validation.json` saves a machine-readable report.
-- `-v` gives more detail about each issue.
+#### 1.1.2 On your Mac, add this to ~/.ssh/config
+```bash
+Host scotty scotty.pni.princeton.edu
+    HostName scotty.pni.princeton.edu
+    User NETID #EDIT THIS
+    IdentityFile ~/.ssh/id_ed25519
+    AddKeysToAgent yes
+    UseKeychain yes
+    ControlMaster auto
+    ControlPath ~/.ssh/cm-%r@%h:%p
+    ControlPersist 4h
+```
+### 1.2 Download the `scotty-jupyter` script to your Mac
 
-The validator checks structure, file names and required fields. It does **not** check that sidecar *values* are correct.
+#### 1.2.1 Edit the script
+* Add your NETID, PROJECT_DIR, and CONDA_ENV
+
+#### 1.2.2 Run these lines in your Mac's Terminal:
+```bash
+   mkdir -p ~/bin && mv ~/Downloads/scotty-jupyter ~/bin/ && chmod +x ~/bin/scotty-jupyter
+   echo 'export PATH="$HOME/bin:$PATH"' >> ~/.zshrc && source ~/.zshrc
+```
+These lines will create a ~/bin folder and move the script from ~/Downloads to it.
+It will then make the script executable and add it to your path.
+
+### 1.3 Now you can use the `scotty-jupyter` script. 
+
+* The script will SSH into Scotty for you without a password.
+* It will activate your pygers-meg environment.
+* `cd` you into the pygers-meg folder.
+* And launch JupyterLab so it prints the URL you can use to paste into your Mac's browser.
+* Pressing Ctrl-C twice stops Jupyter and closes the tunnel.
+
+
+
