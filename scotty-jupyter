@@ -1,0 +1,60 @@
+#!/usr/bin/env bash
+# scotty-jupyter — open an SSH tunnel to scotty and launch JupyterLab on a random port.
+# Usage: scotty-jupyter            (random port)
+#        scotty-jupyter 6123       (specific port)
+
+# ---- user settings ---------------------------------------------------------------
+NETID="your_netid"                       
+HOST="scotty.pni.princeton.edu"
+PROJECT_DIR="/jukebox/[yourpath]/pygers-meg"
+CONDA_ENV="pygers-meg"
+# -----------------------------------------------------------------------------
+
+port_ok() {
+  local p=$1
+  (( p < 4000 || p > 9999 )) && return 1
+  (( p >= 8800 && p <= 8899 )) && return 1
+  (( p == 5000 || p == 7000 )) && return 1      # macOS AirPlay Receiver uses these
+  # also skip ports already in use on this Mac
+  lsof -nP -iTCP:"$p" -sTCP:LISTEN >/dev/null 2>&1 && return 1
+  return 0
+}
+
+if [[ -n "$1" ]]; then
+  PORT=$1
+  port_ok "$PORT" || { echo "Port $PORT is excluded or busy on this Mac."; exit 1; }
+else
+  while :; do
+    PORT=$(( RANDOM % 6000 + 4000 ))
+    port_ok "$PORT" && break
+  done
+fi
+
+echo "Using port $PORT  →  JupyterLab will be at http://127.0.0.1:${PORT}/lab"
+
+# Commands run on scotty. \$ is escaped so it expands remotely, not locally.
+REMOTE_CMD=$(cat <<EOF
+if ss -ltn "sport = :${PORT}" | grep -q LISTEN; then
+  echo "Port ${PORT} is already taken on scotty. Run the script again to try another port."
+  exit 3
+fi
+${MODULE_LOAD:-true}
+cd "${PROJECT_DIR}" || { echo "Cannot cd to ${PROJECT_DIR}"; exit 1; }
+eval "\$(conda shell.bash hook)"
+conda activate "${CONDA_ENV}" || { echo "Cannot activate conda env ${CONDA_ENV}"; exit 1; }
+exec jupyter lab --no-browser --ip=127.0.0.1 --port=${PORT} --ServerApp.port_retries=0
+EOF
+)
+
+# Escape any single quotes for the remote shell, then run it in a login bash.
+REMOTE_Q=${REMOTE_CMD//\'/\'\\\'\'}
+
+ssh -t \
+  -o ExitOnForwardFailure=yes \
+  -L "${PORT}:localhost:${PORT}" \
+  "${NETID}@${HOST}" \
+  "bash -lc '${REMOTE_Q}'"
+
+rc=$?
+[[ $rc -eq 3 ]] && echo "(Remote port collision — just rerun.)"
+exit $rc
