@@ -518,8 +518,6 @@ dependencies:
   - zstd=1.5.7=hb78ec9c_7
   - pip:
       - cmeg2fif @ git+https://github.com/mrribbits/cMEG2FIF-Scully.git@04845fce818291835eada8a3095ab3290a633da6  # v2.16
-      - bids-validator-deno==3.0.2
-      - deno==2.9.7
       - pyqt6==6.11.0
       - pyqt6-qt6==6.11.2
       - pyqt6-sip==13.13.0
