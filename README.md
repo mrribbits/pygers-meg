@@ -11,6 +11,8 @@ Jupyter notebooks from the Pygers-MEG user group.
 | [`01-explore-raw-files/03_Dicom_to_BIDS_heudiconv.ipynb`](01-explore-raw-files/03_Dicom_to_BIDS_heudiconv.ipynb) | Converting DICOM files to NIFTI BIDS with [HeuDiConv](https://heudiconv.readthedocs.io/en/latest/), and checking the result |
 |---|---|
 | [`01-explore-raw-files/04_FIF_to_BIDS.ipynb`](01-explore-raw-files/04_FIF_to_BIDS.ipynb) | Transitioning the FIF MEG data into the BIDS structure |
+|---|---|
+| [`01-explore-raw-files/05_Sync_eye_to_MEG.ipynb`](01-explore-raw-files/05_Sync_eye_to_MEG.ipynb) | Aligning eye data with MEG data |
 ---
 
 ## Getting the notebooks
