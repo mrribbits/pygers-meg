@@ -27,7 +27,7 @@ $defs:
   study:
     type: object
     additionalProperties: false
-    required: [study, paths, data, steps, options, validator, report, slurm, files, facility_overrides]
+    required: [study, paths, software, data, steps, options, validator, report, slurm, files, facility_overrides]
     properties:
       study:
         type: object
@@ -42,6 +42,16 @@ $defs:
         properties:
           sourcedata_root: {$ref: "#/$defs/path"}
           bids_root: {$ref: "#/$defs/path"}
+      software:
+        type: object
+        additionalProperties: false
+        required: [heudiconv_sif, pydeface_sif, bids_validator_sif, extra_binds, edf2asc_dir]
+        properties:
+          heudiconv_sif: {$ref: "#/$defs/optional_path"}
+          pydeface_sif: {$ref: "#/$defs/optional_path"}
+          bids_validator_sif: {$ref: "#/$defs/path"}
+          extra_binds: {$ref: "#/$defs/string_list"}
+          edf2asc_dir: {$ref: "#/$defs/optional_path"}
       data:
         type: object
         additionalProperties: false
@@ -376,7 +386,7 @@ $defs:
   facility:
     type: object
     additionalProperties: false
-    required: [institution, meg, eye_tracker, mri, containers, tools]
+    required: [institution, meg, eye_tracker, mri]
     properties:
       institution:
         type: object
@@ -435,18 +445,3 @@ $defs:
         required: [scanner_timezone]
         properties:
           scanner_timezone: {type: string, minLength: 1}
-      containers:
-        type: object
-        additionalProperties: false
-        required: [heudiconv, pydeface, bids_validator, extra_binds]
-        properties:
-          heudiconv: {$ref: "#/$defs/path"}
-          pydeface: {$ref: "#/$defs/path"}
-          bids_validator: {$ref: "#/$defs/path"}
-          extra_binds: {$ref: "#/$defs/string_list"}
-      tools:
-        type: object
-        additionalProperties: false
-        required: [edf2asc_dir]
-        properties:
-          edf2asc_dir: {$ref: "#/$defs/optional_path"}

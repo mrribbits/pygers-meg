@@ -3,8 +3,8 @@
 # =====================================================================================
 #
 #  These settings are the same for every study recorded in the lab: the MEG hardware,
-#  the institution, the shared software containers, how the trigger and analog
-#  channels are wired. The facility keeps this file up to date; studies normally
+#  the institution, how the trigger and analog channels are wired. (Each user's own
+#  software, the containers and edf2asc, is set in the study's study.yaml.) The facility keeps this file up to date; studies normally
 #  don't edit it.
 #
 #  A study that needs a different value (another site, a different setup) does NOT
@@ -18,8 +18,8 @@
 #  Text values may contain {placeholders} that are filled in when the pipeline runs,
 #  e.g. {cmeg2fif_version}. The list of placeholders is in the template's README.md.
 #
-#  Used by: notebook 01 (line frequency), 02 (eye tracker), 03 (containers, scanner),
-#           04 (everything under meg: and institution:), 06 (validator container).
+#  Used by: notebook 01 (line frequency), 02 (eye tracker), 03 and 04 (scanner),
+#           04 (everything under meg: and institution:).
 # =====================================================================================
 
 
@@ -115,20 +115,3 @@ mri:
   # The scanner's time zone. HeuDiConv writes acquisition times in local time; notebook 04
   # converts them to UTC before shifting them like the MEG dates.
   scanner_timezone: "America/New_York"
-
-
-# -------------------------------------------------------------------------------------
-#  Software containers (Apptainer/Singularity images) and tools on the cluster
-# -------------------------------------------------------------------------------------
-#  The pipeline checks before running that each file exists and starts.
-containers:
-  heudiconv:      "/jukebox/pinsk/singularity-containers/heudiconv/heudiconv-1.5.1.sif"
-  pydeface:       "/jukebox/pinsk/singularity-containers/pydeface/pydeface-2026-08-10.sif"
-  bids_validator: "/jukebox/pinsk/singularity-containers/bids-validator/bids-validator-3.0.2.sif"
-  # Extra folders to make visible inside the containers, e.g. ["/scratch"]. [] = none.
-  extra_binds: []
-
-tools:
-  # The folder that contains edf2asc (SR Research's EDF reader, used by eye2bids).
-  # null = edf2asc is already on your PATH (e.g. after running install_edf2asc.sh).
-  edf2asc_dir: null

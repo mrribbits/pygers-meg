@@ -82,12 +82,13 @@ def notebook_settings_in_code() -> dict:
 def filled_config(fill=True) -> Path:
     root = Path(tempfile.mkdtemp())
     cfg_dir = root / "bids-config"
-    shutil.copytree(TEMPLATE, cfg_dir)
+    shutil.copytree(TEMPLATE, cfg_dir, ignore=shutil.ignore_patterns(".*", "__pycache__"))
     if fill:
         for f in cfg_dir.rglob("*"):
             if f.is_file():
                 s = f.read_text(encoding="utf-8")
                 s = s.replace("/jukebox/[yourpath]/auditory-oddball", str(root))
+                s = s.replace("/jukebox/[yourpath]/singularity-containers", "/jukebox/pinsk/singularity-containers")
                 s = s.replace('family-names: "EDIT ME"', 'family-names: "Test"')
                 s = s.replace('given-names: "EDIT ME"', 'given-names: "Person"')
                 s = s.replace('"EDIT ME: Institution"', '"Test University"')
@@ -163,6 +164,8 @@ def test_mistakes_are_caught():
         ("text/README.md", "## Task: {task}", "## Task: {task_name}", "unknown placeholder"),
         ("subjects/sub-01.yaml", 'subject: "01"', 'subject: "sub-01"', "letters and digits"),
         ("study.yaml", '/sourcedata"', '/bids/sourcedata"', "inside"),
+        ("study.yaml", '  pydeface_sif: "/jukebox/pinsk/singularity-containers/pydeface/pydeface-2026-08-10.sif"',
+         "  pydeface_sif: null", "needed because data.mri"),
     ]
     for file, old, new, expect in cases:
         problems = _problems_after(file, old, new)

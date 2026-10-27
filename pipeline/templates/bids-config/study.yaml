@@ -13,10 +13,10 @@
 #    text/             long texts: README, task description, instructions, license
 #    subjects/         one file per subject/session: labels, recording names, bad channels
 #
-#  To run one subject (from the pygers-meg folder, on scotty):
-#      sbatch run_bids.sh /jukebox/<lab>/<study>/bids-config/subjects/sub-01.yaml
+#  To run one subject (on scotty, in the pygers-meg environment, from the pygers-meg folder):
+#      bash run_bids.sh /jukebox/<lab>/<study>/bids-config/subjects/sub-01.yaml
 #
-#  The Scully MEG lab's own settings (hardware, institution, containers) are in
+#  The Scully MEG lab's own settings (hardware, institution) are in
 #  pipeline/facility.yaml in the pygers-meg repository. Change any of them for this
 #  study under facility_overrides: at the end of this file.
 #
@@ -60,6 +60,25 @@ study:
 paths:
   sourcedata_root: "/jukebox/[yourpath]/auditory-oddball/sourcedata"
   bids_root: "/jukebox/[yourpath]/auditory-oddball/bids"
+
+
+# -------------------------------------------------------------------------------------
+#  Your software on the cluster
+# -------------------------------------------------------------------------------------
+#  Each person keeps their own copies of these (they are not shared), so set the paths
+#  to yours. The pipeline checks before running that each file exists and starts.
+#  The containers are Apptainer/Singularity images (.sif files).
+software:
+  # HeuDiConv and pydeface (notebook 03). Can be null if data.mri is false.
+  heudiconv_sif: "/jukebox/[yourpath]/singularity-containers/heudiconv/heudiconv-1.5.1.sif"
+  pydeface_sif: "/jukebox/[yourpath]/singularity-containers/pydeface/pydeface-2026-08-10.sif"
+  # The BIDS validator (notebooks 03 and 06).
+  bids_validator_sif: "/jukebox/[yourpath]/singularity-containers/bids-validator/bids-validator-3.0.2.sif"
+  # Extra folders to make visible inside the containers, e.g. ["/scratch"]. [] = none.
+  extra_binds: []
+  # The folder that contains edf2asc (SR Research's EDF reader, used by eye2bids in
+  # notebook 02). null = edf2asc is already on your PATH (e.g. after install_edf2asc.sh).
+  edf2asc_dir: null
 
 
 # -------------------------------------------------------------------------------------

@@ -13,7 +13,7 @@ study's.
 
    | File | What's in it | Change |
    |---|---|---|
-   | `study.yaml` | where the data are, what was recorded, what to run, options, job settings | once per study |
+   | `study.yaml` | where the data are, your software (containers, edf2asc), what was recorded, what to run, options, job settings | once per study |
    | `processing.yaml` | how each notebook processes the data: events, MRI naming words, sync rules, behavioral columns | once per study (task-specific) |
    | `dataset.yaml` | the BIDS dataset's name, authors, license, version history, participant columns | once per study |
    | `private.yaml` | DAYSBACK, the secret date shift | once per study; keep it private |
@@ -32,8 +32,18 @@ study's.
    It lists every problem it finds (misspelled settings, missing values, event names that
    don't match, raw files it can't find), or says the configuration is complete.
    `--show 04` also prints the settings notebook 04 would receive.
+4. Run a session (same place):
 
-The Scully MEG lab's own settings (hardware, institution, containers) are in
+   ```bash
+   bash run_bids.sh /jukebox/<lab>/<study>/bids-config/subjects/sub-01.yaml
+   ```
+
+   This checks everything again (including your containers and the raw recordings), then
+   submits a Slurm job. The reports appear in the session's `reports/<date-time>/` folder:
+   open `index.html`. `--check` only checks; `--steps 01` runs only notebook 01 (useful for
+   choosing the bad channels first, see below).
+
+The Scully MEG lab's own settings (hardware, institution) are in
 `pipeline/facility.yaml` in the pygers-meg repository. To change one for your study only,
 set it under `facility_overrides:` in `study.yaml`.
 
@@ -58,6 +68,6 @@ These texts can contain placeholders, filled in by notebook 04 when it runs:
 
 ## Bad channels
 
-Run notebook 01 first (e.g. with only step `"01"` on) and look at its report: the
+Run notebook 01 first (`bash run_bids.sh <subject file> --steps 01`) and look at its report: the
 candidate table and the spectra. Then set `bad_channels` in the subject file: a list,
 `auto` (notebook 01's candidates), or `auto` with `add`/`keep` changes.

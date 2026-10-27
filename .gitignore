@@ -13,3 +13,7 @@ data/
 
 # users' personal working copies of notebooks
 my_*.ipynb
+
+# Python caches and the SMB share's leftover placeholders
+__pycache__/
+.smbdelete*

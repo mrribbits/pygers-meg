@@ -6,14 +6,53 @@ The notebooks still work on their own exactly as before.
 
 | File | What it is |
 |---|---|
-| `facility.yaml` | the Scully MEG lab's settings: hardware, institution, containers, tools |
+| `facility.yaml` | the Scully MEG lab's settings: hardware, institution, scanner |
 | `templates/bids-config/` | the folder a study copies and fills in (see its README.md) |
 | `bids_config.py` | reads a study's configuration, checks it, and turns it into the settings each notebook asks for |
 | `bids_config.schema.yaml` | the rules each configuration file must follow |
-| `tests/test_bids_config.py` | checks that the template and the notebooks agree |
+| `run_pipeline.py` | runs the notebooks for one session with papermill and writes the HTML reports |
+| `../run_bids.sh` | checks a session, then submits `run_pipeline.py` as a Slurm job |
+| `tests/` | checks that the template and the notebooks agree, and the step rules |
 
-Still to come: `run_pipeline.py` (runs the notebooks with papermill and writes the
-HTML reports) and `run_bids.sh` (the Slurm job script).
+## Running a session
+
+On scotty, in the `pygers-meg` environment, from the pygers-meg folder:
+
+```bash
+bash run_bids.sh /jukebox/<lab>/<study>/bids-config/subjects/sub-01.yaml            # check, then submit
+bash run_bids.sh /jukebox/<lab>/<study>/bids-config/subjects/sub-01.yaml --check    # only check
+bash run_bids.sh /jukebox/<lab>/<study>/bids-config/subjects/sub-01.yaml --steps 01 # only notebook 01
+```
+
+What happens:
+
+1. **Pre-flight**, on the login node and again in the job: the configuration is checked;
+   the raw files the chosen notebooks need are found (cMEG recordings, EinScan files, the
+   .edf, the DICOMs, the PsychoPy logs); the software is checked (cmeg2fif version,
+   edf2asc, apptainer, and that each of your containers starts); files the chosen
+   notebooks need from notebooks that won't run must already exist. Any problem stops
+   here, before anything is changed, with the whole list. Warnings (not stops): a
+   notebook that won't run whose output is older than its input.
+2. **Which notebooks run**: `steps:` in study.yaml (or `--steps`), minus those whose data
+   the study doesn't have (`data:`). If 04 runs, 05 runs too; 06 always runs last.
+3. **Running**: each notebook runs with papermill, reading its settings from the run's
+   `settings.yaml`. A failed notebook doesn't stop the others, but the notebooks that need
+   its output are skipped. 06 runs whenever there is a BIDS dataset.
+4. **Lock**: notebooks 03-06 write shared files (the BIDS dataset, the MRI naming rules),
+   so before the first of them the job takes a lock (`<study>/.bids.lock`); a second job
+   waits. A lock left by a job that no longer runs is removed automatically.
+5. **Reports**, in `<session>/reports/<date-time>/` (`reports/latest` points to the newest):
+   `index.html` (status, times, failures, the validator's counts), one HTML report per
+   notebook (code hidden or shown with a button; `report.hide_code` sets the start),
+   the executed notebooks, `settings.yaml`, `config/` (a copy of the configuration files)
+   and `pipeline.log`. The Slurm log is `<session>/reports/slurm-<job id>.log`.
+
+Exit status: 0 = all chosen notebooks ran; 1 = one failed or was skipped; 2 = pre-flight
+problems.
+
+The notebooks run in the `python3` Jupyter kernel of the active environment. If the
+pre-flight check says that kernel belongs to another environment, register this one
+(`python -m ipykernel install --user --name pygers-meg`) and add `--kernel pygers-meg`.
 
 ## Checking a study's configuration
 
@@ -44,4 +83,5 @@ tests (they compare the notebooks with the template):
 
 ```bash
 python pipeline/tests/test_bids_config.py
+python pipeline/tests/test_run_pipeline.py
 ```

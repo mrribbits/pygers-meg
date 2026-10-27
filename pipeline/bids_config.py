@@ -286,6 +286,13 @@ def _cross_problems(cfg: Config) -> list:
     if dupes:
         p.append(f"processing.yaml: events.event_id uses the code(s) {dupes} for more than one name")
 
+    # Software: the MRI containers are needed when the study has MRI
+    sw = cfg.study.get("software", {})
+    if cfg.study.get("data", {}).get("mri"):
+        for name in ("heudiconv_sif", "pydeface_sif"):
+            if name in sw and not sw[name]:
+                p.append(f"study.yaml: software.{name} is needed because data.mri is true")
+
     # Sync: the MEG event names it refers to exist
     sync = cfg.processing.get("eye_sync", {})
     if cfg.study.get("data", {}).get("eye_tracking"):
@@ -486,7 +493,7 @@ def notebook_settings(cfg: Config, inputs: dict | None = None, summary_file=None
         "SUBJECT": sub, "SESSION": ses, "TASK": task, "RUN": None,
         "OUT_DIR": S / "eye-staging",
         "METADATA_FILE": eye_meta,
-        "EDF2ASC_DIR": fc["tools"]["edf2asc_dir"],
+        "EDF2ASC_DIR": st["software"]["edf2asc_dir"],
         "KEEP_WORK": pr["eye_conversion"]["keep_work"],
     }
 
@@ -496,12 +503,12 @@ def notebook_settings(cfg: Config, inputs: dict | None = None, summary_file=None
         "BIDS_OUT": S / "mri-staging",
         "HEURISTIC_PATH": cfg.sourcedata_root / "code" / "heuristic.py",
         "DEFACED_DIR": S / "defaced_anat",
-        "SIF_PATH": fc["containers"]["heudiconv"],
-        "PYDEFACE_SIF": fc["containers"]["pydeface"],
-        "VALIDATOR_SIF": fc["containers"]["bids_validator"],
+        "SIF_PATH": st["software"]["heudiconv_sif"],
+        "PYDEFACE_SIF": st["software"]["pydeface_sif"],
+        "VALIDATOR_SIF": st["software"]["bids_validator_sif"],
         "DICOM_TEMPLATE": inputs.get("dicom_template"),
         "SUBJECTS": [sub], "SESSION": ses,
-        "EXTRA_BINDS": fc["containers"]["extra_binds"],
+        "EXTRA_BINDS": st["software"]["extra_binds"],
         "OVERWRITE": opts["overwrite"],
         "ADD_RUN": mri["add_run"],
         "SKIP_TOP_LEVEL": True,           # the MRI joins the MEG dataset: no top-level files
@@ -614,7 +621,7 @@ def notebook_settings(cfg: Config, inputs: dict | None = None, summary_file=None
     val = st["validator"]
     nb["06"] = {
         "BIDS_ROOT": cfg.bids_root,
-        "VALIDATOR_SIF": fc["containers"]["bids_validator"],
+        "VALIDATOR_SIF": st["software"]["bids_validator_sif"],
         "IGNORE_WARNINGS": val["ignore_warnings"],
         "SHOW_TEXT_REPORT": val["show_text_report"],
         "FAIL_ON_ERRORS": val["fail_on_errors"],
