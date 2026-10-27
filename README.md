@@ -13,6 +13,8 @@ Jupyter notebooks from the Pygers-MEG user group.
 | [`01-explore-raw-files/04_FIF_to_BIDS.ipynb`](01-explore-raw-files/04_FIF_to_BIDS.ipynb) | Transitioning the FIF MEG data into the BIDS structure |
 |---|---|
 | [`01-explore-raw-files/05_Sync_eye_to_MEG.ipynb`](01-explore-raw-files/05_Sync_eye_to_MEG.ipynb) | Aligning eye data with MEG data |
+|---|---|
+| [`01-explore-raw-files/06_Validate_BIDS.ipynb`](01-explore-raw-files/06_Validate_BIDS.ipynb) | Final step running BIDS Validator |
 ---
 
 ## Getting the notebooks
