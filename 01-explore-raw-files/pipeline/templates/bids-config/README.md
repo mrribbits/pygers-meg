@@ -5,6 +5,9 @@ reads it and passes the settings to the six notebooks, so you never edit the not
 The values here are for the sample auditory-oddball dataset; replace them with your
 study's.
 
+This README is for setting up and running a study. How the pipeline itself works (and how
+to change it) is in `01-explore-raw-files/pipeline/README.md` in the pygers-meg repository.
+
 ## Setting up a new study
 
 1. Copy this whole folder next to your study's data, e.g.
@@ -22,27 +25,32 @@ study's.
 
    Every setting has a comment explaining it. Anything that says `EDIT ME` or contains
    `[yourpath]` must be replaced.
-3. Check the configuration (on scotty, in the `pygers-meg` environment, from the
-   pygers-meg's
-   01-explore-raw-files folder):
+3. Check and run. On scotty, from pygers-meg's `01-explore-raw-files` folder:
 
    ```bash
-   python pipeline/bids_config.py /jukebox/<lab>/<study>/bids-config/subjects/sub-01.yaml
+   conda activate pygers-meg
+   cd <your pygers-meg folder>/01-explore-raw-files
    ```
 
-   It lists every problem it finds (misspelled settings, missing values, event names that
-   don't match, raw files it can't find), or says the configuration is complete.
-   `--show 04` also prints the settings notebook 04 would receive.
-4. Run a session (same place):
+   There are two checks. Both only look; neither changes anything.
+
+   | Command | What it checks | When to use it |
+   |---|---|---|
+   | `python pipeline/bids_config.py <subject file>` | the YAML files: misspelled or missing settings, leftover `EDIT ME`, settings that disagree; and that the .edf and DICOMs can be found | while you edit the files (quick) |
+   | `bash run_bids.sh <subject file> --check` | all of that, plus everything a real run needs: the raw recordings, your containers and software, and which notebooks would run | once, before you submit |
+
+   `bids_config.py ... --show 04` also prints the exact settings notebook 04 (or any
+   notebook) would receive.
+
+   Then submit:
 
    ```bash
    bash run_bids.sh /jukebox/<lab>/<study>/bids-config/subjects/sub-01.yaml
    ```
 
-   This checks everything again (including your containers and the raw recordings), then
-   submits a Slurm job. The reports appear in the session's `reports/<date-time>/` folder:
-   open `index.html`. `--check` only checks; `--steps 01` runs only notebook 01 (useful for
-   choosing the bad channels first, see below).
+   This runs the same full check first and submits the Slurm job only if it passes. The
+   reports appear in the session's `reports/<date-time>/` folder: open `index.html`.
+   `--steps 01` runs only notebook 01 (useful for choosing the bad channels first, see below).
 
 The Scully MEG lab's own settings (hardware, institution) are in
 `01-explore-raw-files/pipeline/facility.yaml` in the pygers-meg repository. To change one for your study only,

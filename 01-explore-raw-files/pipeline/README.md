@@ -4,6 +4,10 @@ Runs the six notebooks in this folder's parent, `01-explore-raw-files/`, as one 
 settings for a study taken from YAML files instead of edited into the notebooks.
 The notebooks still work on their own exactly as before.
 
+This README explains how the pipeline works and how to change it. Setting up and running
+a study is explained in `templates/bids-config/README.md`, which each study copies along
+with its configuration.
+
 | File | What it is |
 |---|---|
 | `facility.yaml` | the Scully MEG lab's settings: hardware, institution, scanner |
@@ -67,6 +71,10 @@ On scotty, in the `pygers-meg` environment, from pygers-meg's 01-explore-raw-fil
 ```bash
 python pipeline/bids_config.py /jukebox/<lab>/<study>/bids-config/subjects/sub-01.yaml
 ```
+
+This checks only the configuration files (and that the .edf and DICOMs can be found); it's
+quick and needs no other software. `bash run_bids.sh <subject file> --check` runs the full
+pre-flight check described above, which includes this one.
 
 ## How a notebook gets its settings
 
