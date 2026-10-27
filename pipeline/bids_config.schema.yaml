@@ -1,0 +1,452 @@
+# The rules each configuration file must follow (JSON Schema, written as YAML).
+# bids_config.py checks every file against its section below before anything runs.
+# "additionalProperties: false" makes a misspelled setting name an error instead of
+# being silently ignored.
+
+$schema: "https://json-schema.org/draft/2020-12/schema"
+title: "Pygers-MEG BIDS pipeline configuration"
+
+$defs:
+  # ---- small building blocks ----
+  label:        {type: string, pattern: "^[A-Za-z0-9]+$"}
+  optional_label: {anyOf: [{$ref: "#/$defs/label"}, {type: "null"}]}
+  path:         {type: string, minLength: 1}
+  optional_path: {anyOf: [{$ref: "#/$defs/path"}, {type: "null"}]}
+  cutoff:       {anyOf: [{type: number}, {const: "n/a"}]}
+  string_list:  {type: array, items: {type: string}}
+  column_description:
+    type: object
+    required: [Description]
+    properties:
+      Description: {type: string}
+      Units: {type: string}
+      Levels: {type: object, additionalProperties: {type: string}}
+    additionalProperties: true
+
+  # =====================================================================================
+  study:
+    type: object
+    additionalProperties: false
+    required: [study, paths, data, steps, options, validator, report, slurm, files, facility_overrides]
+    properties:
+      study:
+        type: object
+        additionalProperties: false
+        required: [task]
+        properties:
+          task: {$ref: "#/$defs/label"}
+      paths:
+        type: object
+        additionalProperties: false
+        required: [sourcedata_root, bids_root]
+        properties:
+          sourcedata_root: {$ref: "#/$defs/path"}
+          bids_root: {$ref: "#/$defs/path"}
+      data:
+        type: object
+        additionalProperties: false
+        required: [eye_tracking, mri, behavioral]
+        properties:
+          eye_tracking: {type: boolean}
+          mri: {type: boolean}
+          behavioral: {type: boolean}
+      steps:
+        type: object
+        additionalProperties: false
+        required: ["01", "02", "03", "04", "05", "06"]
+        patternProperties:
+          "^0[1-6]$": {type: boolean}
+      options:
+        type: object
+        additionalProperties: false
+        required: [overwrite, force_reconvert, write_dataset_files, emptyroom_layout]
+        properties:
+          overwrite: {type: boolean}
+          force_reconvert: {type: boolean}
+          write_dataset_files: {type: boolean}
+          emptyroom_layout: {enum: ["same-session", "sub-emptyroom"]}
+      validator:
+        type: object
+        additionalProperties: false
+        required: [ignore_warnings, show_text_report, fail_on_errors]
+        properties:
+          ignore_warnings: {type: boolean}
+          show_text_report: {type: boolean}
+          fail_on_errors: {type: boolean}
+      report:
+        type: object
+        additionalProperties: false
+        required: [hide_code]
+        properties:
+          hide_code: {type: boolean}
+      slurm:
+        type: object
+        additionalProperties: false
+        required: [time, mem, cpus, partition]
+        properties:
+          time: {type: string, pattern: "^([0-9]+-)?[0-9]{1,2}:[0-9]{2}:[0-9]{2}$"}
+          mem: {type: string, pattern: "^[0-9]+[KMGT]?$"}
+          cpus: {type: integer, minimum: 1}
+          partition: {anyOf: [{type: string}, {type: "null"}]}
+      files:
+        type: object
+        additionalProperties: false
+        required: [processing, dataset, private, text_dir, facility]
+        properties:
+          processing: {$ref: "#/$defs/path"}
+          dataset: {$ref: "#/$defs/path"}
+          private: {$ref: "#/$defs/path"}
+          text_dir: {$ref: "#/$defs/path"}
+          facility: {$ref: "#/$defs/optional_path"}
+      facility_overrides: {type: object}
+
+  # =====================================================================================
+  subject:
+    type: object
+    additionalProperties: false
+    required: [study_config, subject, session, cmeg, einscan, eye, bad_channels, bad_reasons, participant, overrides]
+    properties:
+      study_config: {$ref: "#/$defs/path"}
+      subject: {$ref: "#/$defs/label"}
+      session: {$ref: "#/$defs/label"}
+      cmeg:
+        type: object
+        additionalProperties: false
+        required: [emptyroom_prefix, task_prefix]
+        properties:
+          emptyroom_prefix: {type: string, minLength: 1}
+          task_prefix: {type: string, minLength: 1}
+      einscan:
+        type: object
+        additionalProperties: false
+        required: [xfm_file, xyz_file]
+        properties:
+          xfm_file: {type: string, minLength: 1}
+          xyz_file: {type: string, minLength: 1}
+      eye:
+        type: object
+        additionalProperties: false
+        required: [edf_file]
+        properties:
+          edf_file: {type: string, minLength: 1}
+      bad_channels:
+        anyOf:
+          - {$ref: "#/$defs/string_list"}
+          - {const: "auto"}
+          - type: object
+            additionalProperties: false
+            required: [auto]
+            properties:
+              auto: {type: boolean}
+              add: {$ref: "#/$defs/string_list"}
+              keep: {$ref: "#/$defs/string_list"}
+      bad_reasons: {type: object, additionalProperties: {type: string}}
+      participant:
+        type: object
+        not: {required: [participant_id]}
+        additionalProperties: {type: [string, number, "null"]}
+      overrides: {type: object}
+
+  # =====================================================================================
+  processing:
+    type: object
+    additionalProperties: false
+    required: [meg_conversion, eye_conversion, mri_conversion, events, anonymization, behavioral, eye_sync]
+    properties:
+      meg_conversion:
+        type: object
+        additionalProperties: false
+        required: [screen, browse_starts]
+        properties:
+          screen:
+            type: object
+            additionalProperties: false
+            required: [tmin, duration, z_threshold]
+            properties:
+              tmin: {type: number, minimum: 0}
+              duration: {type: number, exclusiveMinimum: 0}
+              z_threshold: {type: number, exclusiveMinimum: 0}
+          browse_starts: {type: array, minItems: 1, items: {type: number, minimum: 0}}
+      eye_conversion:
+        type: object
+        additionalProperties: false
+        required: [metadata_file, keep_work]
+        properties:
+          metadata_file: {$ref: "#/$defs/optional_path"}
+          keep_work: {type: boolean}
+      mri_conversion:
+        type: object
+        additionalProperties: false
+        required: [dicom_files, heuristic, t1w_words, t2w_words, skip_words, require_words,
+                   expected_scans, add_run, deface_suffixes, redeface, datatypes]
+        properties:
+          dicom_files: {type: string, minLength: 1}
+          heuristic: {type: string, minLength: 1}
+          t1w_words: {$ref: "#/$defs/string_list"}
+          t2w_words: {$ref: "#/$defs/string_list"}
+          skip_words: {$ref: "#/$defs/string_list"}
+          require_words: {$ref: "#/$defs/string_list"}
+          expected_scans:
+            anyOf:
+              - {type: object, additionalProperties: {type: integer, minimum: 0}}
+              - {type: "null"}
+          add_run: {type: boolean}
+          deface_suffixes: {$ref: "#/$defs/string_list"}
+          redeface: {type: boolean}
+          datatypes: {type: array, minItems: 1, items: {enum: [anat, fmap, dwi, func, perf]}}
+      events:
+        type: object
+        additionalProperties: false
+        required: [source, stim_channel, shortest_event, consecutive, min_duration, event_id, drop_unmapped,
+                   trial_type_levels, durations, extra_columns, stimulus_presentation]
+        properties:
+          source: {enum: ["stim", "annotations"]}
+          stim_channel: {anyOf: [{type: string, minLength: 1}, {type: "null"}]}
+          shortest_event: {type: integer, minimum: 1}
+          consecutive: {enum: ["increasing", true, false]}
+          min_duration: {type: number, minimum: 0}
+          event_id: {type: object, minProperties: 1, additionalProperties: {type: integer, minimum: 1}}
+          drop_unmapped: {type: boolean}
+          trial_type_levels: {type: object, additionalProperties: {type: string, minLength: 1}}
+          durations: {type: object, additionalProperties: {type: number, minimum: 0}}
+          extra_columns:
+            type: object
+            additionalProperties:
+              type: object
+              required: [Description, values]
+              properties:
+                Description: {type: string}
+                Units: {type: string}
+                values: {type: object}
+              additionalProperties: false
+          stimulus_presentation: {type: object, additionalProperties: {type: string}}
+      anonymization:
+        type: object
+        additionalProperties: false
+        required: [anonymize, keep_his, keep_source]
+        properties:
+          anonymize: {type: boolean}
+          keep_his: {type: boolean}
+          keep_source: {type: boolean}
+      behavioral:
+        type: object
+        additionalProperties: false
+        required: [columns]
+        properties:
+          columns:
+            type: object
+            propertyNames: {pattern: "^[A-Za-z0-9]+$"}
+            additionalProperties: {type: object, additionalProperties: {$ref: "#/$defs/column_description"}}
+      eye_sync:
+        type: object
+        additionalProperties: false
+        required: [recording, match_mode, code_pattern, name_pattern, name_map, meg_trial_types,
+                   first_pass_tolerance_s, final_tolerance_s, outlier_ms, deriv_name, make_synced_fif,
+                   et_prefix, restore_nan, blink_annot, missing_annot, analog_eye_channels,
+                   window_s, pause_factor, blink_preview]
+        properties:
+          recording: {$ref: "#/$defs/label"}
+          match_mode: {enum: ["name", "code"]}
+          code_pattern: {type: string}
+          name_pattern: {anyOf: [{type: string}, {type: "null"}]}
+          name_map: {anyOf: [{type: object, additionalProperties: {type: string}}, {type: "null"}]}
+          meg_trial_types: {anyOf: [{$ref: "#/$defs/string_list"}, {type: "null"}]}
+          first_pass_tolerance_s: {type: number, exclusiveMinimum: 0}
+          final_tolerance_s: {type: number, exclusiveMinimum: 0}
+          outlier_ms: {type: number, exclusiveMinimum: 0}
+          deriv_name: {type: string, pattern: "^[A-Za-z0-9_-]+$"}
+          make_synced_fif: {type: boolean}
+          et_prefix: {type: string}
+          restore_nan: {type: boolean}
+          blink_annot: {type: string, minLength: 1}
+          missing_annot: {type: string, minLength: 1}
+          analog_eye_channels:
+            type: object
+            additionalProperties: false
+            properties:
+              xpos: {anyOf: [{type: string}, {type: "null"}]}
+              ypos: {anyOf: [{type: string}, {type: "null"}]}
+              pupil: {anyOf: [{type: string}, {type: "null"}]}
+          window_s: {type: number, exclusiveMinimum: 0}
+          pause_factor: {type: number, exclusiveMinimum: 0}
+          blink_preview:
+            type: object
+            additionalProperties: false
+            required: [enabled, trial_start_type, start_shift_s, trial_end_type, end_shift_s,
+                       blink_counts, trials_per_group, trials_per_row, count_blinks_starting_before]
+            properties:
+              enabled: {type: boolean}
+              trial_start_type: {anyOf: [{type: string}, {$ref: "#/$defs/string_list"}]}
+              start_shift_s: {type: number}
+              trial_end_type: {type: string}
+              end_shift_s: {type: number}
+              blink_counts: {type: array, items: {type: integer, minimum: 0}}
+              trials_per_group: {type: integer, minimum: 1}
+              trials_per_row: {type: integer, minimum: 1}
+              count_blinks_starting_before: {type: boolean}
+
+  # =====================================================================================
+  dataset:
+    type: object
+    additionalProperties: false
+    required: [description, citation, changes, participants_columns, task_sidecar]
+    properties:
+      description:
+        type: object
+        additionalProperties: false
+        required: [name, use_citation_cff, authors, how_to_acknowledge, license, bids_version, keywords,
+                   acknowledgements, funding, ethics_approvals, doi, references]
+        properties:
+          name: {type: string, minLength: 1}
+          use_citation_cff: {type: boolean}
+          authors: {$ref: "#/$defs/string_list"}
+          how_to_acknowledge: {type: string}
+          license: {type: string}
+          bids_version: {type: string, pattern: "^[0-9]+\\.[0-9]+\\.[0-9]+$"}
+          keywords: {$ref: "#/$defs/string_list"}
+          acknowledgements: {type: string}
+          funding: {$ref: "#/$defs/string_list"}
+          ethics_approvals: {$ref: "#/$defs/string_list"}
+          doi: {type: string}
+          references:
+            type: array
+            items:
+              type: object
+              additionalProperties: false
+              required: [title, authors, journal, year, doi]
+              properties:
+                title: {type: string}
+                authors: {type: array, items: {type: string, pattern: "^[^,]+, .+$"}}
+                journal: {type: string}
+                year: {type: integer}
+                doi: {type: string}
+      citation:
+        type: object
+        additionalProperties: false
+        required: [authors, message, preferred_paper]
+        properties:
+          authors:
+            type: array
+            minItems: 1
+            items:
+              type: object
+              additionalProperties: false
+              required: [family-names, given-names]
+              properties:
+                family-names: {type: string, minLength: 1}
+                given-names: {type: string, minLength: 1}
+                affiliation: {type: string}
+                orcid: {type: string, pattern: "^(https://orcid\\.org/[0-9]{4}-[0-9]{4}-[0-9]{4}-[0-9]{3}[0-9X])?$"}
+                email: {type: string}
+          message: {type: string, minLength: 1}
+          preferred_paper: {anyOf: [{type: object}, {type: "null"}]}
+      changes:
+        type: array
+        minItems: 1
+        items:
+          type: object
+          additionalProperties: false
+          required: [version, date, items]
+          properties:
+            version: {type: string, minLength: 1}
+            date: {type: string}
+            items: {type: array, minItems: 1, items: {type: string}}
+      participants_columns:
+        type: object
+        required: [participant_id]
+        additionalProperties: {$ref: "#/$defs/column_description"}
+      task_sidecar:
+        type: object
+        additionalProperties: false
+        required: [write, cog_atlas_id, cog_po_id]
+        properties:
+          write: {type: boolean}
+          cog_atlas_id: {type: string}
+          cog_po_id: {type: string}
+
+  # =====================================================================================
+  private:
+    type: object
+    additionalProperties: false
+    required: [daysback]
+    properties:
+      daysback: {anyOf: [{type: integer, minimum: 1}, {type: "null"}]}
+
+  # =====================================================================================
+  facility:
+    type: object
+    additionalProperties: false
+    required: [institution, meg, eye_tracker, mri, containers, tools]
+    properties:
+      institution:
+        type: object
+        additionalProperties: false
+        required: [name, address, department]
+        properties:
+          name: {type: string}
+          address: {type: string}
+          department: {type: string}
+      meg:
+        type: object
+        additionalProperties: false
+        required: [line_freq, dewar_position, software_filters, manufacturer, manufacturers_model_name,
+                   device_serial_number, software_versions, hardware_filters, emptyroom_description,
+                   ref_channel_type, meg_low_cutoff, meg_high_cutoff, trig_cutoffs, misc_cutoffs,
+                   channel_descriptions, coordsystem]
+        properties:
+          line_freq: {enum: [50, 60]}
+          dewar_position: {type: string, pattern: "^(upright|supine)(=.*)?$"}
+          software_filters: {anyOf: [{const: "n/a"}, {type: object}]}
+          manufacturer: {type: string}
+          manufacturers_model_name: {type: string}
+          device_serial_number: {type: string}
+          software_versions: {type: string}
+          hardware_filters:
+            type: object
+            additionalProperties:
+              type: object
+              required: [CutoffFrequency, Description]
+              properties:
+                CutoffFrequency: {anyOf: [{type: number}, {type: "null"}]}
+                Description: {type: string}
+          emptyroom_description: {type: string}
+          ref_channel_type: {enum: ["MEGREFMAG", "MEGREFGRADAXIAL", "MEGREFGRADPLANAR"]}
+          meg_low_cutoff: {$ref: "#/$defs/cutoff"}
+          meg_high_cutoff: {anyOf: [{$ref: "#/$defs/cutoff"}, {const: "hardware_lowpass"}]}
+          trig_cutoffs: {type: array, minItems: 2, maxItems: 2, items: {$ref: "#/$defs/cutoff"}}
+          misc_cutoffs: {type: array, minItems: 2, maxItems: 2, items: {$ref: "#/$defs/cutoff"}}
+          channel_descriptions: {type: object, additionalProperties: {type: string}}
+          coordsystem:
+            type: object
+            additionalProperties: false
+            required: [apply, description]
+            properties:
+              apply: {type: boolean}
+              description: {type: string}
+      eye_tracker:
+        type: object
+        additionalProperties: false
+        required: [metadata_file]
+        properties:
+          metadata_file: {$ref: "#/$defs/optional_path"}
+      mri:
+        type: object
+        additionalProperties: false
+        required: [scanner_timezone]
+        properties:
+          scanner_timezone: {type: string, minLength: 1}
+      containers:
+        type: object
+        additionalProperties: false
+        required: [heudiconv, pydeface, bids_validator, extra_binds]
+        properties:
+          heudiconv: {$ref: "#/$defs/path"}
+          pydeface: {$ref: "#/$defs/path"}
+          bids_validator: {$ref: "#/$defs/path"}
+          extra_binds: {$ref: "#/$defs/string_list"}
+      tools:
+        type: object
+        additionalProperties: false
+        required: [edf2asc_dir]
+        properties:
+          edf2asc_dir: {$ref: "#/$defs/optional_path"}

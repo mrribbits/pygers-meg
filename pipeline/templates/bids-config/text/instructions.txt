@@ -1,0 +1,17 @@
+You will hear a series of tones.
+
+On each trial an arrow cue appears:
+    <  <   = LEFT hand          >  >   = RIGHT hand
+
+After the cue you will hear several identical tones,
+followed by ONE different (higher) tone.
+
+As soon as you hear the DIFFERENT tone,
+press the INDEX FINGER button on the cued hand
+as quickly as possible.
+
+If you miss or press the wrong button, you'll see feedback.
+
+When 'BLINK' appears, you have half a second to blink.
+Otherwise please try not to blink and hold your gaze on the cross.
+

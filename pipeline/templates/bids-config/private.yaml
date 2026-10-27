@@ -1,0 +1,24 @@
+# =====================================================================================
+#  private.yaml: the secret date shift. Keep this file private.
+# =====================================================================================
+#
+#  Notebook 04 moves every recording date in the BIDS dataset back by DAYSBACK days
+#  (MEG and MRI alike), so the dataset holds no real dates. Anyone who knows this
+#  number can recover the real dates, so:
+#
+#    * don't share this file, and don't put it in the BIDS dataset or a public repository;
+#    * use the SAME number for every participant of the study, so the time between
+#      recordings is kept;
+#    * never change it once data are in bids/ (dates would no longer line up).
+#
+#  To choose a number, run this once on scotty and paste the result below:
+#      python -c "import random; print(random.randint(39000, 44000))"
+#
+#  Why that range: the shift must move each date before 1925 (BIDS asks for this), but not
+#  past the oldest date MNE can store (around 1902). For a recording made in late 2026 that
+#  allows about 37,200 to 45,500 days; 39,000 to 44,000 works for every recording made from
+#  2026 to about 2030. Notebook 04 checks the exact range for each recording and stops if
+#  the number is outside it. The pipeline refuses to run while daysback is null.
+# =====================================================================================
+
+daysback: null

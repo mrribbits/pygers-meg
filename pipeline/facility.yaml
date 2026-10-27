@@ -1,0 +1,134 @@
+# =====================================================================================
+#  facility.yaml: settings that describe the Scully Center MEG lab itself
+# =====================================================================================
+#
+#  These settings are the same for every study recorded in the lab: the MEG hardware,
+#  the institution, the shared software containers, how the trigger and analog
+#  channels are wired. The facility keeps this file up to date; studies normally
+#  don't edit it.
+#
+#  A study that needs a different value (another site, a different setup) does NOT
+#  edit this file. It sets the value under "facility_overrides:" in its own study.yaml,
+#  using the same names as here, e.g.
+#
+#      facility_overrides:
+#        institution:
+#          name: "My University"
+#
+#  Text values may contain {placeholders} that are filled in when the pipeline runs,
+#  e.g. {cmeg2fif_version}. The list of placeholders is in the template's README.md.
+#
+#  Used by: notebook 01 (line frequency), 02 (eye tracker), 03 (containers, scanner),
+#           04 (everything under meg: and institution:), 06 (validator container).
+# =====================================================================================
+
+
+# -------------------------------------------------------------------------------------
+#  Institution: written into every recording's _meg.json (InstitutionName, ...)
+# -------------------------------------------------------------------------------------
+institution:
+  name: "Princeton University, Princeton Neuroscience Institute"
+  address: "40 Woodlands Way, Princeton, NJ 08540, USA"
+  department: "Princeton Neuroscience Institute"
+
+
+# -------------------------------------------------------------------------------------
+#  The OPM-MEG system (notebook 04, Sections 10.1, 10.2 and 10.5)
+# -------------------------------------------------------------------------------------
+meg:
+  # Mains (power line) frequency in Hz: 60 in North America, 50 in most other places.
+  # Used by cMEG2FIF (notebook 01) and written as PowerLineFrequency (notebook 04).
+  line_freq: 60
+
+  # REQUIRED by BIDS. OPMs have no dewar, but the field is required; a seated participant
+  # in an upright helmet is "upright". Allowed: "upright", "supine", or e.g. "upright=15°".
+  dewar_position: "upright"
+
+  # REQUIRED by BIDS: digital filters applied to the data on disk. "n/a": Cerca applies none
+  # (the acquisition filters only affect the live display) and cMEG2FIF applies none.
+  software_filters: "n/a"
+
+  # "Other": Cerca/QuSpin is not in the BIDS list of MEG manufacturers.
+  manufacturer: "Other"
+  manufacturers_model_name: "Cerca Magnetics OPM-MEG system with QuSpin QZFM Gen-3 sensors"
+
+  # The system serial number, or a pseudonym. "" leaves it out of _meg.json.
+  device_serial_number: ""
+
+  # Acquisition software and converter versions. {cmeg2fif_version} is read from the
+  # cMEG2FIF conversion log of each recording.
+  software_versions: "cAcquisition v1.3.0.120; QZFM UI v10.1.9; cMEG2FIF {cmeg2fif_version}; EyeLink 1000 Plus v5.51.53237"
+
+  # Every filter in the MEG signal chain (CutoffFrequency in Hz). Per Cerca: the sensors'
+  # analog output has a 150 Hz bandwidth and is DC-coupled (no high-pass), and there is no
+  # anti-aliasing filter before digitization, so the sensor bandwidth is the only filter.
+  hardware_filters:
+    "OPM sensor bandwidth (low-pass)":
+      CutoffFrequency: 150.0
+      Description: >-
+        QuSpin QZFM Gen-3 analog output bandwidth (-3 dB); output is DC-coupled.
+        No analog anti-aliasing filter before digitization (Cerca).
+
+  # Written as TaskDescription of the empty-room recording (task-noise).
+  emptyroom_description: >-
+    Empty-room recording: the magnetically shielded room with the OPM helmet and no
+    participant, recorded in the same session to characterize environmental noise.
+
+  # ---- _channels.tsv (notebook 04, Section 10.2) ----
+  # BIDS type of the reference sensors: "MEGREFMAG" (reference magnetometers).
+  ref_channel_type: "MEGREFMAG"
+  # low_cutoff/high_cutoff columns for the MEG channels, in Hz. "n/a" = none (DC-coupled).
+  # "hardware_lowpass" = the lowest CutoffFrequency in hardware_filters above (150).
+  meg_low_cutoff: "n/a"
+  meg_high_cutoff: "hardware_lowpass"
+  # [low_cutoff, high_cutoff] for the trigger channels and for the other (analog) channels.
+  trig_cutoffs: ["n/a", "n/a"]
+  misc_cutoffs: ["n/a", "n/a"]
+  # A description for individual channels (e.g. what each BNC input is wired to), written to
+  # the description column of _channels.tsv: {"channel name": "description"}. {} = none.
+  channel_descriptions: {}
+
+  # ---- _coordsystem.json (notebook 04, Section 10.5) ----
+  # apply: true writes the description below into _coordsystem.json.
+  coordsystem:
+    apply: false
+    description: >-
+      Neuromag head frame (RAS, origin between the ears) defined by nasion/LPA/RPA from Cerca
+      cReg coregistration; sensor positions in the Cerca helmet frame, transformed with the
+      device-to-head transform in the FIF.
+
+
+# -------------------------------------------------------------------------------------
+#  Eye tracker (notebook 02)
+# -------------------------------------------------------------------------------------
+eye_tracker:
+  # The eye-tracker settings file (screen size, viewing distance, camera settings).
+  # null = the MEG lab's settings that come with the Scully eye2bids (Recommended for the
+  # MEG lab). A study with a different setup gives its own .yml file in processing.yaml.
+  metadata_file: null
+
+
+# -------------------------------------------------------------------------------------
+#  MRI scanner (notebooks 03 and 04)
+# -------------------------------------------------------------------------------------
+mri:
+  # The scanner's time zone. HeuDiConv writes acquisition times in local time; notebook 04
+  # converts them to UTC before shifting them like the MEG dates.
+  scanner_timezone: "America/New_York"
+
+
+# -------------------------------------------------------------------------------------
+#  Software containers (Apptainer/Singularity images) and tools on the cluster
+# -------------------------------------------------------------------------------------
+#  The pipeline checks before running that each file exists and starts.
+containers:
+  heudiconv:      "/jukebox/pinsk/singularity-containers/heudiconv/heudiconv-1.5.1.sif"
+  pydeface:       "/jukebox/pinsk/singularity-containers/pydeface/pydeface-2026-08-10.sif"
+  bids_validator: "/jukebox/pinsk/singularity-containers/bids-validator/bids-validator-3.0.2.sif"
+  # Extra folders to make visible inside the containers, e.g. ["/scratch"]. [] = none.
+  extra_binds: []
+
+tools:
+  # The folder that contains edf2asc (SR Research's EDF reader, used by eye2bids).
+  # null = edf2asc is already on your PATH (e.g. after running install_edf2asc.sh).
+  edf2asc_dir: null

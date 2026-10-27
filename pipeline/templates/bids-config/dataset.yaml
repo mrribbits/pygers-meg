@@ -1,0 +1,140 @@
+# =====================================================================================
+#  dataset.yaml: the description of the BIDS dataset (notebook 04, Section 11)
+# =====================================================================================
+#
+#  These become the dataset-level files: dataset_description.json, CITATION.cff,
+#  CHANGES, participants.json and task-<label>_meg.json. They are written only when
+#  study.yaml says options.write_dataset_files: true.
+#
+#  The README and LICENSE texts are in text/.
+# =====================================================================================
+
+
+# -------------------------------------------------------------------------------------
+#  dataset_description.json (11.1)
+# -------------------------------------------------------------------------------------
+description:
+  name: "Sample auditory oddball OPM-MEG dataset"    # REQUIRED
+
+  # true = the authors, license, how-to-acknowledge and references go in CITATION.cff
+  # (Recommended; BIDS then leaves them out of dataset_description.json).
+  use_citation_cff: true
+
+  # Used only if use_citation_cff: false. Names as "Given Family".
+  authors: []
+  how_to_acknowledge: ""
+
+  # The license name: "CC0" (public-domain dedication, the OpenNeuro default; Recommended),
+  # or e.g. "CC-BY-4.0", "PDDL". The full text is in text/LICENSE.txt.
+  license: "CC0"
+
+  bids_version: "1.11.1"      # the BIDS version the validator checks against (bids-validator 3.0.2)
+  keywords: ["MEG", "OPM", "oddball paradigm"]
+  acknowledgements: "We would like to thank members of the PNI Pygers-MEG user group with data collection and analysis"
+  funding:
+    - "Funding for the acquisition of the data was provided by the Regina and John Scully ’66 Center for the Neuroscience of Mind and Behavior."
+  ethics_approvals:
+    - "Princeton University Institutional Review Board, protocol number 16967"
+  doi: ""                     # e.g. "doi:10.18112/openneuro.ds00xxxx.v1.0.0"; "" if none yet
+
+  # Publications describing the data or methods: written to CITATION.cff "references" (or, without
+  # CITATION.cff, as DOI links). Authors as "Family, Given".
+  references:
+    - title: "MEG-BIDS, the brain imaging data structure extended to magnetoencephalography"
+      authors: ["Niso, G.", "Gorgolewski, K. J.", "Bock, E.", "Brooks, T. L.", "Flandin, G.", "Gramfort, A.",
+                "Henson, R. N.", "Jas, M.", "Litvak, V.", "Moreau, J.", "Oostenveld, R.", "Schoffelen, J.",
+                "Tadel, F.", "Wexler, J.", "Baillet, S."]
+      journal: "Scientific Data"
+      year: 2018
+      doi: "10.1038/sdata.2018.110"
+    - title: "MNE-BIDS: Organizing electrophysiological data into the BIDS format and facilitating their analysis"
+      authors: ["Appelhoff, S.", "Sanderson, M.", "Brooks, T.", "Vliet, M.", "Quentin, R.", "Holdgraf, C.",
+                "Chaumon, M.", "Mikulan, E.", "Tavabi, K.", "Höchenberger, R.", "Welke, D.", "Brunner, C.",
+                "Rockhill, A.", "Larson, E.", "Gramfort, A.", "Jas, M."]
+      journal: "Journal of Open Source Software"
+      year: 2019
+      doi: "10.21105/joss.01896"
+    - title: "FieldTrip: Open source software for advanced analysis of MEG, EEG, and invasive electrophysiological data"
+      authors: ["Oostenveld, R.", "Fries, P.", "Maris, E.", "Schoffelen, J.-M."]
+      journal: "Computational Intelligence and Neuroscience"
+      year: 2011
+      doi: "10.1155/2011/156869"
+    - title: "Two varieties of long-latency positive waves evoked by unpredictable auditory stimuli in man"
+      authors: ["Squires, N. K.", "Squires, K. C.", "Hillyard, S. A."]
+      journal: "Electroencephalography and Clinical Neurophysiology"
+      year: 1975
+      doi: "10.1016/0013-4694(75)90263-1"
+    - title: "Evoked-potential correlates of stimulus uncertainty"
+      authors: ["Sutton, S.", "Braren, M.", "Zubin, J.", "John, E. R."]
+      journal: "Science"
+      year: 1965
+      doi: "10.1126/science.150.3700.1187"
+    - title: "MEG studies of sensorimotor rhythms: A review"
+      authors: ["Cheyne, D. O."]
+      journal: "Experimental Neurology"
+      year: 2013
+      doi: "10.1016/j.expneurol.2012.08.030"
+    - title: "The mismatch negativity (MMN) in basic research of central auditory processing: a review"
+      authors: ["Näätänen, R.", "Paavilainen, P.", "Rinne, T.", "Alho, K."]
+      journal: "Clinical Neurophysiology"
+      year: 2007
+      doi: "10.1016/j.clinph.2007.04.026"
+
+
+# -------------------------------------------------------------------------------------
+#  CITATION.cff (11.4c): how people cite the dataset
+# -------------------------------------------------------------------------------------
+citation:
+  # One entry per author. orcid as a full URL, e.g. "https://orcid.org/0000-0000-0000-0000",
+  # or "" if none.
+  authors:
+    - family-names: "EDIT ME"
+      given-names: "EDIT ME"
+      affiliation: "EDIT ME: Institution"
+      orcid: ""
+  message: "If you use this dataset, please cite it using the metadata from this file."
+  # A paper to cite instead of the dataset, e.g. {type: article, title: "...", journal: "...",
+  # year: 2027, doi: "..."}. null = none.
+  preferred_paper: null
+
+
+# -------------------------------------------------------------------------------------
+#  CHANGES (11.4a): the dataset's version history, newest first
+# -------------------------------------------------------------------------------------
+#  The newest entry's version and date are also the version and release date in
+#  CITATION.cff. A version already in CHANGES keeps its heading; only new lines are added.
+#  Lines may use {mne_version} and {mne_bids_version}.
+changes:
+  - version: "1.0.0"
+    date: "EDIT ME"             # release date, e.g. "2026-11-01"
+    items:
+      - "Initial release."
+      - "Converted with MNE {mne_version} / MNE-BIDS {mne_bids_version}."
+
+
+# -------------------------------------------------------------------------------------
+#  participants.json (11.3): a description of every column of participants.tsv
+# -------------------------------------------------------------------------------------
+#  Each subject file gives its participant's values (participant: in subjects/sub-XX.yaml);
+#  every column used there must be described here.
+participants_columns:
+  participant_id:
+    Description: "Unique participant identifier (matches the sub- folder name)."
+  age:
+    Description: "Age of the participant at the time of the MEG recording."
+    Units: "year"
+  sex:
+    Description: "Sex of the participant as reported by the participant."
+    Levels: {male: "male", female: "female", other: "other"}
+  handedness:
+    Description: "Self-reported handedness."
+    Levels: {left: "left", right: "right", ambidextrous: "ambidextrous"}
+
+
+# -------------------------------------------------------------------------------------
+#  task-<label>_meg.json (11.4d): task fields shared by every recording of the task
+# -------------------------------------------------------------------------------------
+task_sidecar:
+  write: true
+  cog_atlas_id: ""     # Cognitive Atlas task ID (URL), "" if none
+  cog_po_id: ""        # CogPO paradigm ID (URL), "" if none

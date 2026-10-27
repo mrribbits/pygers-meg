@@ -1,0 +1,277 @@
+# =====================================================================================
+#  processing.yaml: how each notebook processes this study's data
+# =====================================================================================
+#
+#  Grouped by notebook. The values below are for the sample auditory-oddball task;
+#  most groups need changing for a new experiment (events, MRI naming words, sync
+#  rules, behavioral columns).
+#
+#  A subject file can change any of these for one session only, under "overrides:"
+#  (same names and layout as here).
+# =====================================================================================
+
+
+# -------------------------------------------------------------------------------------
+#  Notebook 01: cMEG -> FIF conversion, bad-channel screen
+# -------------------------------------------------------------------------------------
+meg_conversion:
+  # The bad-channel screen: flags MEG channels that are flat or noisy compared with the
+  # others, in a stretch of the task recording filtered 1-40 Hz. The candidates are saved
+  # next to the FIF; notebook 04 uses them when a subject file says bad_channels: auto.
+  screen:
+    tmin: 30.0          # start of the stretch, in seconds from the start of the recording
+    duration: 60.0      # length of the stretch, in seconds
+    z_threshold: 5.0    # robust z-score above which a channel counts as noisy (below minus this: flat)
+
+  # The report shows still pictures of the raw data: one 10-s window starting at each of
+  # these times (seconds). e.g. [60, 1800] for one near the start and one later on.
+  browse_starts: [60]
+
+
+# -------------------------------------------------------------------------------------
+#  Notebook 02: EyeLink .edf -> BIDS with eye2bids
+# -------------------------------------------------------------------------------------
+eye_conversion:
+  # The eye-tracker settings file. null = the facility's (MEG lab) settings. Give a path to
+  # your own .yml only for a different setup.
+  metadata_file: null
+  # true = keep the work/ folder with eye2bids' temporary .asc files (large); false = delete it.
+  keep_work: false
+
+
+# -------------------------------------------------------------------------------------
+#  Notebook 03: MRI DICOM -> BIDS with HeuDiConv, defacing
+# -------------------------------------------------------------------------------------
+mri_conversion:
+  # Where the DICOM files are, inside raw/mri/. "auto" = directly in raw/mri/ or in
+  # raw/mri/dcm/, as *.dcm files or as DICOM files without an extension (Recommended).
+  # Otherwise a pattern inside raw/mri/, e.g. "series_*/*.IMA".
+  dicom_files: "auto"
+
+  # The heuristic: the rules that decide which scans are converted and what they're called.
+  #   "generate"              write it from the word lists below (Recommended)
+  #   "/path/to/heuristic.py" use your own heuristic file, unchanged (for fieldmaps, DWI or
+  #                           functional runs, which the generated one doesn't handle)
+  heuristic: "generate"
+
+  # Words that identify each scan, matched in lower case against the scanner's protocol name
+  # and series description. Within one list: a scan matches if its name contains ANY of them.
+  t1w_words: ["t1w", "mpr"]                       # e.g. anat_ses-01_T1w_acq-0.8mm-MPR
+  t2w_words: ["t2w", "t2space"]                   # e.g. anat_ses-01_T2w_acq-0.8mm-T2SPACE
+  skip_words: ["scout", "localizer", "phoenix"]   # positioning scans and scanner reports
+  # A scan is only converted if its name contains ALL of these words. [] = no filter.
+  # ["0.8mm"] keeps only the 0.8 mm scans when other resolutions were also collected.
+  require_words: ["0.8mm"]
+
+  # How many scans of each kind the heuristic must keep per session. The pipeline stops
+  # before converting if the dry run finds a different number.
+  expected_scans:
+    T1w: 1
+    T2w: 1
+
+  # true = add _run-01, _run-02 to the names (only needed if a scan is repeated in a session).
+  add_run: false
+
+  # Which images get a defaced copy (for sharing) in defaced_anat/, by the end of their name.
+  deface_suffixes: ["T1w", "T2w"]
+  # true = deface again even if a defaced copy already exists.
+  redeface: false
+
+  # The staging folders notebook 04 copies into the dataset. ["anat"] unless your own
+  # heuristic also writes e.g. "fmap" or "dwi".
+  datatypes: ["anat"]
+
+
+# -------------------------------------------------------------------------------------
+#  Notebook 04: events (Sections 4.2, 4.4 and 10.4)
+# -------------------------------------------------------------------------------------
+events:
+  # ---- 4.2 Reading the events from the recording ----
+  source: "stim"              # "stim" = from the trigger channel (Recommended for the MEG lab)
+  stim_channel: "STI101"      # the trigger channel (VPixx pixel-mode codes); null = the first one found
+  shortest_event: 1           # shortest event, in samples
+  consecutive: "increasing"   # how to read codes that follow each other directly ("increasing", true, false)
+  min_duration: 0.0           # shortest trigger pulse to count, in seconds
+
+  # ---- 4.4 Event names: trigger code -> name (trial_type in _events.tsv) ----
+  # Every code found in the recording must be listed here, or notebook 04 stops and lists
+  # the codes it found (unless drop_unmapped: true, which leaves unlisted codes out).
+  event_id:
+    standard: 1
+    deviant: 2
+    blink: 4
+    left cue: 8
+    right cue: 16
+    error feedback: 32
+  drop_unmapped: false
+
+  # ---- 10.4 _events.json / _events.tsv ----
+  # A description of every event name above (REQUIRED for each one).
+  trial_type_levels:
+    standard: "Frequent standard tone, 1000 Hz, 400 ms (50 ms cosine ramps); 3-7 per trial."
+    deviant: "Rare oddball tone, 1200 Hz, 400 ms (50 ms cosine ramps); one per trial, ends the tone sequence; target for the button press."
+    left cue: "Arrow cue (500 ms) instructing a LEFT index-finger response to the upcoming deviant."
+    right cue: "Arrow cue (500 ms) instructing a RIGHT index-finger response to the upcoming deviant."
+    blink: "Onset of the 500 ms BLINK screen at the end of every trial (blinks allowed here only)."
+    error feedback: "Feedback screen (400 ms) after a missed or wrong-hand response."
+
+  # The duration column of _events.tsv, in seconds, per event name. Events not listed: n/a.
+  durations:
+    standard: 0.4
+    deviant: 0.4
+    left cue: 0.5
+    right cue: 0.5
+    blink: 0.5
+    error feedback: 0.4
+
+  # Extra columns for _events.tsv: a description (and units), and the value per event name.
+  # Event names not listed get n/a.
+  extra_columns:
+    stim_frequency:
+      Description: "Tone frequency"
+      Units: "Hz"
+      values:
+        standard: 1000
+        deviant: 1200
+    cued_hand:
+      Description: "Hand cued for the response on this trial (cue events only)"
+      values:
+        left cue: "left"
+        right cue: "right"
+
+  # How the stimuli were presented (StimulusPresentation in _events.json). Notebook 05 adds
+  # the screen details from the eye tracker.
+  stimulus_presentation:
+    OperatingSystem: "Windows 11"
+    SoftwareName: "PsychoPy"
+    SoftwareRRID: "RRID:SCR_006571"
+    SoftwareVersion: "2026.2.3"
+    Code: "https://doi.org/10.5281/zenodo.23541404"
+
+
+# -------------------------------------------------------------------------------------
+#  Notebook 04: anonymization (Section 7)
+# -------------------------------------------------------------------------------------
+#  The date shift itself (DAYSBACK) is in private.yaml.
+anonymization:
+  anonymize: true       # true = shift all dates back and remove names from the FIF headers (Recommended)
+  keep_his: false       # true = keep the subject's "his_id" in the FIF header (Recommended: false)
+  keep_source: false    # true = keep the file's original source information (Recommended: false)
+
+
+# -------------------------------------------------------------------------------------
+#  Notebook 04: PsychoPy behavioral logs (Section 13)
+# -------------------------------------------------------------------------------------
+#  raw/behav/ holds one .csv per table, named <...>task-<task>_<table>.csv. Each becomes
+#  beh/sub-..._task-<task>_acq-<table>_beh.tsv with a _beh.json describing every column.
+#  Every column of every table needs a description (and units where it helps), or notebook
+#  04 stops and lists the missing ones.
+behavioral:
+  columns:
+    trials:
+      overall_trial:        {Description: "Trial number across the whole session, training included."}
+      block:                {Description: "Block the trial belongs to: training, block_1, block_2 or block_3."}
+      trial_in_block:       {Description: "Trial number within its block."}
+      is_training:          {Description: "True for training trials (with feedback), False for main trials."}
+      cue_hand:             {Description: "Hand the arrow cue asked for: left or right."}
+      expected_button:      {Description: "Button the participant should press: left_index or right_index."}
+      n_standards:          {Description: "Number of standard tones before the deviant (3-7)."}
+      fixation_onset_pp:    {Description: "Fixation cross onset, on the PsychoPy clock.", Units: "s"}
+      fixation_onset_vp:    {Description: "Fixation cross onset, on the VPixx clock.", Units: "s"}
+      cue_onset_pp:         {Description: "Arrow cue onset, on the PsychoPy clock.", Units: "s"}
+      cue_onset_vp:         {Description: "Arrow cue onset, on the VPixx clock.", Units: "s"}
+      first_tone_onset_pp:  {Description: "Onset of the trial's first tone, on the PsychoPy clock.", Units: "s"}
+      first_tone_onset_vp:  {Description: "Onset of the trial's first tone, on the VPixx clock.", Units: "s"}
+      deviant_onset_pp:     {Description: "Deviant tone onset, on the PsychoPy clock.", Units: "s"}
+      deviant_onset_vp:     {Description: "Deviant tone onset, on the VPixx clock.", Units: "s"}
+      response_button:      {Description: "Button pressed: left_index or right_index (n/a if none)."}
+      response_key_name:    {Description: "Key code of the button pressed, as the button box reports it."}
+      response_time_pp:     {Description: "Time of the button press, on the PsychoPy clock.", Units: "s"}
+      response_time_vp_est: {Description: "Time of the button press on the VPixx clock, estimated from the PsychoPy clock.", Units: "s"}
+      rt_pp:                {Description: "Response time from the deviant onset, on the PsychoPy clock.", Units: "s"}
+      rt_vp_est:            {Description: "Response time from the deviant onset, on the (estimated) VPixx clock.", Units: "s"}
+      outcome:              {Description: "Result of the trial, e.g. correct."}
+      feedback_shown:       {Description: "True if the error feedback screen was shown."}
+      blink_onset_pp:       {Description: "BLINK screen onset, on the PsychoPy clock.", Units: "s"}
+      blink_onset_vp:       {Description: "BLINK screen onset, on the VPixx clock.", Units: "s"}
+    tones:
+      overall_trial:        {Description: "Trial number across the whole session, training included."}
+      block:                {Description: "Block the trial belongs to: training, block_1, block_2 or block_3."}
+      trial_in_block:       {Description: "Trial number within its block."}
+      tone_index:           {Description: "Position of the tone within its trial (1 = first tone)."}
+      kind:                 {Description: "Tone type: standard or deviant."}
+      frequency:            {Description: "Tone frequency.", Units: "Hz"}
+      onset_pp:             {Description: "Tone onset, on the PsychoPy clock.", Units: "s"}
+      onset_vp:             {Description: "Tone onset, on the VPixx clock (hardware-scheduled audio).", Units: "s"}
+      isi_after:            {Description: "Gap from this tone's offset to the next tone's onset (n/a after the deviant).", Units: "s"}
+    presses:
+      context:              {Description: "Part of the experiment the press happened in, e.g. trial."}
+      overall_trial:        {Description: "Trial number across the whole session, training included."}
+      block:                {Description: "Block the trial belongs to: training, block_1, block_2 or block_3."}
+      kind:                 {Description: "Type of event, e.g. press."}
+      label:                {Description: "Button pressed: left_index or right_index."}
+      key_name:             {Description: "Key code of the button, as the button box reports it."}
+      time_pp:              {Description: "Time of the press, on the PsychoPy clock.", Units: "s"}
+      time_vp_est:          {Description: "Time of the press on the VPixx clock, estimated from the PsychoPy clock.", Units: "s"}
+
+
+# -------------------------------------------------------------------------------------
+#  Notebook 05: syncing the eye tracking to the MEG
+# -------------------------------------------------------------------------------------
+eye_sync:
+  # The eye2bids recording label: "eye1" = the (single) recorded eye in the MEG lab.
+  recording: "eye1"
+
+  # ---- 5.1 How EyeLink messages are paired with MEG events ----
+  #   "name": by event name (Recommended when PsychoPy sends named messages)
+  #   "code": by trigger number, read from the message with code_pattern
+  match_mode: "name"
+  code_pattern: 'TRIGGER\s+(\d+)'     # used with match_mode "code"
+  name_pattern: '(\w+)_onset'         # used with match_mode "name" when name_map is null
+  # Exact EyeLink message -> MEG event name (a name from events.event_id). null = use name_pattern.
+  name_map:
+    standard_onset: "standard"
+    deviant_onset: "deviant"
+    cue_onset_left: "left cue"
+    cue_onset_right: "right cue"
+    blink_cue: "blink"
+  # Only use these MEG event names for pairing, e.g. ["standard", "deviant"]. null = all.
+  meg_trial_types: null
+
+  # ---- Matching tolerances (the defaults work for MEG-lab recordings) ----
+  first_pass_tolerance_s: 0.100   # first, rough pairing: pairs within 100 ms
+  final_tolerance_s: 0.020        # after the first fit: pairs within 20 ms of the fitted line
+  outlier_ms: 15.0                # pairs further than this from the line are left out of the fit
+
+  # ---- Output ----
+  deriv_name: "eyesync"           # report, plots and synced FIF go in bids/derivatives/<deriv_name>/
+  make_synced_fif: true           # false = don't write the MEG + eye FIF file
+  et_prefix: "ET_"                # added to every eye channel name in the synced FIF
+  restore_nan: false              # true = put NaN back where eye data were missing (blinks, lost tracking)
+  blink_annot: "ET_blink"         # annotation names in the synced FIF (a "BAD_" start makes MNE drop epochs)
+  missing_annot: "ET_missing"
+
+  # The MEG's analog eye channels (BNC 11-13), compared with the eye-tracker data in the
+  # final check. null = skip that one.
+  analog_eye_channels:
+    xpos: "eye_x"
+    ypos: "eye_y"
+    pupil: "eye_pupil"
+
+  # ---- 6.2 Residuals plot ----
+  window_s: 60                    # length of the zoomed-in window, in seconds
+  pause_factor: 2.0               # a gap longer than this many times the usual gap counts as a pause
+
+  # ---- 6.6 Blink-trial preview (optional) ----
+  # Plots gaze and pupil for a few trials with blinks. It needs the trial structure of your
+  # task, so it's off unless you set it up. The values below are for the oddball task.
+  blink_preview:
+    enabled: false
+    trial_start_type: ["left cue", "right cue"]   # event name(s) a trial starts from
+    start_shift_s: -0.5                           # seconds to move the start (negative = earlier)
+    trial_end_type: "deviant"                     # event name a trial ends at (once per trial)
+    end_shift_s: 0.4                              # seconds to move the end
+    blink_counts: [1, 2, 3]                       # plot trials with exactly this many blinks
+    trials_per_group: 3                           # trials to plot per blink count
+    trials_per_row: 3                             # trials side by side
+    count_blinks_starting_before: false           # true = also count blinks that began before the trial

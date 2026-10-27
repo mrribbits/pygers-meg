@@ -1,0 +1,87 @@
+# =====================================================================================
+#  subjects/sub-01.yaml: one recording session (this is the file you submit)
+# =====================================================================================
+#
+#  Make one file per subject and session (copy this one, e.g. to sub-02.yaml), then run:
+#      sbatch run_bids.sh /jukebox/<lab>/<study>/bids-config/subjects/sub-01.yaml
+#
+#  Everything else (where the data are, what to run, how to process) comes from
+#  ../study.yaml and the files it points to.
+# =====================================================================================
+
+# The study settings this session belongs to (relative to this file).
+study_config: "../study.yaml"
+
+# The BIDS labels: letters and digits only, in quotes. The raw data must be in
+#   <sourcedata_root>/sub-<subject>/ses-<session>/raw/
+# The MRI uses the same session label as the MEG.
+subject: "01"
+session: "01"
+
+
+# -------------------------------------------------------------------------------------
+#  The cMEG recordings (raw/cMEG/)
+# -------------------------------------------------------------------------------------
+#  The prefix is the start of each recording's folder name: <prefix>_cMEG_Data
+#  (the acquisition date and time). If a prefix doesn't match, the pipeline lists the
+#  prefixes it found.
+cmeg:
+  emptyroom_prefix: "20260929_125813"   # the empty-room (noise) recording
+  task_prefix: "20260929_134022"        # the task recording
+
+
+# -------------------------------------------------------------------------------------
+#  The head digitization (raw/einscan/)
+# -------------------------------------------------------------------------------------
+einscan:
+  xfm_file: "sub-01-head+helmet_dev2head_xfm.tsv"
+  xyz_file: "sub-01-head+helmet_digitisation_from_mesh_3_xfmd.xyz"
+
+
+# -------------------------------------------------------------------------------------
+#  The eye tracking (raw/eye/)
+# -------------------------------------------------------------------------------------
+eye:
+  # The EyeLink .edf file. "auto" = the one .edf in raw/eye/ (the pipeline stops if it
+  # finds none or several). Or its file name, e.g. "MP0929.EDF".
+  edf_file: "auto"
+
+
+# -------------------------------------------------------------------------------------
+#  Bad channels (notebook 04)
+# -------------------------------------------------------------------------------------
+#  One of three forms:
+#    bad_channels: ["2C[Z]", "4B[X]"]   exactly these channels
+#    bad_channels: auto                 the candidates notebook 01 found
+#    bad_channels:                      the candidates, adjusted:
+#      auto: true
+#      add: ["2C[Z]"]                     ... plus these
+#      keep: ["1A[Y]"]                    ... minus these (kept good even if flagged)
+#  Check notebook 01's report (the candidate table and spectra) before relying on "auto".
+bad_channels: []
+
+# Why each channel is bad (written to _channels.tsv), e.g. {"2C[Z]": "flat signal"}. With
+# "auto", notebook 01's reason (e.g. "noisy (robust z = +7.2)") is used unless you give one.
+bad_reasons: {}
+
+
+# -------------------------------------------------------------------------------------
+#  The participant (participants.tsv)
+# -------------------------------------------------------------------------------------
+#  One value per column; every column must be described in dataset.yaml
+#  (participants_columns). participant_id is added for you. Use "n/a" for unknown.
+participant:
+  age: 30
+  sex: "female"
+  handedness: "right"
+
+
+# -------------------------------------------------------------------------------------
+#  Changes for this session only
+# -------------------------------------------------------------------------------------
+#  Any processing.yaml setting, with the same names and layout, e.g. a looser sync
+#  tolerance for one noisy session:
+#    overrides:
+#      eye_sync:
+#        final_tolerance_s: 0.030
+overrides: {}

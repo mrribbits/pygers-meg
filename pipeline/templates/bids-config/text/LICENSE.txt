@@ -1,0 +1,6 @@
+This dataset is made available under the Creative Commons CC0 1.0 Universal
+Public Domain Dedication ({license}).
+
+Full legal code: https://creativecommons.org/publicdomain/zero/1.0/legalcode
+
+EDIT ME: replace this paragraph with the full legal code text if you are publishing the dataset.

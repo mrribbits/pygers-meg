@@ -1,0 +1,162 @@
+# =====================================================================================
+#  study.yaml: settings for the whole study (set once)
+# =====================================================================================
+#
+#  This folder (bids-config/) holds everything the pipeline needs to know about your
+#  study. You never edit the notebooks: the pipeline reads these files and passes the
+#  settings to each notebook.
+#
+#    study.yaml        this file: where the data are, what to run, job settings
+#    processing.yaml   how each notebook processes the data (events, MRI rules, sync, ...)
+#    dataset.yaml      the BIDS dataset's description: name, authors, license, ...
+#    private.yaml      DAYSBACK, the secret date shift. Keep this file private.
+#    text/             long texts: README, task description, instructions, license
+#    subjects/         one file per subject/session: labels, recording names, bad channels
+#
+#  To run one subject (from the pygers-meg folder, on scotty):
+#      sbatch run_bids.sh /jukebox/<lab>/<study>/bids-config/subjects/sub-01.yaml
+#
+#  The Scully MEG lab's own settings (hardware, institution, containers) are in
+#  pipeline/facility.yaml in the pygers-meg repository. Change any of them for this
+#  study under facility_overrides: at the end of this file.
+#
+#  Values written as "EDIT ME" must be replaced: the pipeline refuses to run while any
+#  setting still says "EDIT ME" or contains "[yourpath]".
+# =====================================================================================
+
+
+# -------------------------------------------------------------------------------------
+#  The study
+# -------------------------------------------------------------------------------------
+study:
+  # The task label: the part after "task-" in every file name. Letters and digits only.
+  task: "oddballftcued"
+
+
+# -------------------------------------------------------------------------------------
+#  Where the data are
+# -------------------------------------------------------------------------------------
+#  The pipeline expects this layout (it builds every other path from these two):
+#
+#    <study folder>/
+#    ├── bids/                              <- bids_root: the BIDS dataset (anonymized data only)
+#    └── sourcedata/                        <- sourcedata_root
+#        ├── code/heuristic.py              <- the MRI naming rules (written by notebook 03)
+#        └── sub-01/ses-01/
+#            ├── raw/                       <- the files from the lab, as they came (never changed)
+#            │   ├── cMEG/                  <- one <prefix>_cMEG_Data folder per recording
+#            │   ├── einscan/               <- head digitization files
+#            │   ├── eye/                   <- the EyeLink .edf
+#            │   ├── mri/                   <- the DICOM files (directly, or in a dcm/ subfolder)
+#            │   └── behav/                 <- the PsychoPy .csv logs
+#            ├── fif/                       <- notebook 01's FIF files
+#            ├── eye-staging/               <- notebook 02's eye2bids output
+#            ├── mri-staging/               <- notebook 03's HeuDiConv output
+#            ├── defaced_anat/              <- notebook 03's defaced MRI copies (for sharing)
+#            └── reports/                   <- the pipeline's HTML reports
+#
+#  sourcedata_root must NOT be inside bids_root: everything in it can identify the
+#  participant (real dates, faces), and only anonymized data go into bids/.
+paths:
+  sourcedata_root: "/jukebox/[yourpath]/auditory-oddball/sourcedata"
+  bids_root: "/jukebox/[yourpath]/auditory-oddball/bids"
+
+
+# -------------------------------------------------------------------------------------
+#  What was recorded in this study
+# -------------------------------------------------------------------------------------
+#  Turn off what your study doesn't have; the notebooks that need it are then skipped,
+#  and the pipeline doesn't look for those raw folders.
+data:
+  eye_tracking: true    # raw/eye/ (notebooks 02 and 05)
+  mri: true             # raw/mri/ (notebook 03; notebook 04 copies the anatomicals)
+  behavioral: true      # raw/behav/ (notebook 04 converts the PsychoPy logs)
+
+
+# -------------------------------------------------------------------------------------
+#  Which notebooks to run
+# -------------------------------------------------------------------------------------
+#  true = run it. A notebook whose data is turned off above is skipped anyway.
+#  Rules the pipeline adds: if 04 runs, 05 runs too (04 rewrites a file 05 completes),
+#  and 06 (the final BIDS validation) always runs last.
+#  For one run you can also choose on the command line, e.g. ... sub-01.yaml --steps 04,05
+steps:
+  "01": true    # convert the raw cMEG recordings to FIF, screen for bad channels
+  "02": true    # convert the EyeLink .edf with eye2bids
+  "03": true    # convert the MRI DICOMs with HeuDiConv, deface copies
+  "04": true    # write the MEG (+ MRI and behavioral files) into the BIDS dataset
+  "05": true    # sync the eye tracking to the MEG and add it to the BIDS dataset
+  "06": true    # validate the whole BIDS dataset
+
+
+# -------------------------------------------------------------------------------------
+#  Options
+# -------------------------------------------------------------------------------------
+options:
+  # true = files that already exist are replaced (in bids/ and in the staging folders).
+  overwrite: true
+
+  # true = notebook 01 converts the cMEG recordings again even if the FIF files exist.
+  # Set it after fixing a recording prefix or an EinScan file name; otherwise the old FIF is used.
+  force_reconvert: false
+
+  # true = notebook 04 writes the dataset-level files: dataset_description.json, README,
+  # CHANGES, LICENSE, CITATION.cff, task-<label>_meg.json. Set it for the first subject (or
+  # after editing dataset.yaml or text/), then set it to false. participants.tsv is always
+  # updated, whatever this says.
+  write_dataset_files: true
+
+  # How empty-room recordings are stored in BIDS:
+  #   "same-session"   next to the task recording, as task-noise (Recommended)
+  #   "sub-emptyroom"  in a separate sub-emptyroom/ folder
+  emptyroom_layout: "same-session"
+
+
+# -------------------------------------------------------------------------------------
+#  The final BIDS validation (notebook 06)
+# -------------------------------------------------------------------------------------
+validator:
+  ignore_warnings: false    # true = report errors only
+  show_text_report: false   # true = also show the validator's own (long) text report
+  fail_on_errors: false     # true = mark the run as failed if the validator finds errors
+
+
+# -------------------------------------------------------------------------------------
+#  The HTML reports
+# -------------------------------------------------------------------------------------
+#  One HTML file per notebook, plus an index page, in <session>/reports/<date-time>/.
+report:
+  hide_code: true           # true = show only text, tables and figures; false = also the code
+
+
+# -------------------------------------------------------------------------------------
+#  The cluster job (used by run_bids.sh)
+# -------------------------------------------------------------------------------------
+slurm:
+  time: "04:00:00"          # maximum run time (hh:mm:ss)
+  mem: "32G"                # memory
+  cpus: 4                   # CPU cores
+  partition: null           # null = the cluster's default partition
+
+
+# -------------------------------------------------------------------------------------
+#  The other configuration files (relative to this folder)
+# -------------------------------------------------------------------------------------
+#  facility: null = pipeline/facility.yaml in the pygers-meg repository (Recommended).
+files:
+  processing: "processing.yaml"
+  dataset: "dataset.yaml"
+  private: "private.yaml"
+  text_dir: "text"
+  facility: null
+
+
+# -------------------------------------------------------------------------------------
+#  Changes to the facility settings for this study only
+# -------------------------------------------------------------------------------------
+#  Same names and layout as pipeline/facility.yaml; only what you set here changes.
+#  Example:
+#    facility_overrides:
+#      meg:
+#        line_freq: 50
+facility_overrides: {}
