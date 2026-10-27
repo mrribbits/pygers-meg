@@ -46,6 +46,8 @@ What happens:
    notebook (code hidden or shown with a button; `report.hide_code` sets the start),
    the executed notebooks, `settings.yaml`, `config/` (a copy of the configuration files)
    and `pipeline.log`. The Slurm log is `<session>/reports/slurm-<job id>.log`.
+6. **Email** (optional): set `slurm.mail_user` in study.yaml to get Slurm's email when the job
+   ends or fails (`mail_type`, e.g. `["BEGIN", "END", "FAIL"]`).
 
 Studies without sessions (`study.sessions: false`, `session: null` in each subject file)
 leave out the `ses-` level everywhere: `sourcedata/sub-01/raw/`, `bids/sub-01/meg/`, and

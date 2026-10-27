@@ -79,6 +79,14 @@ def test_slurm_options():
     opts = rp.slurm_options(cfg)
     assert "--time=04:00:00" in opts and "--mem=32G" in opts and "--cpus-per-task=4" in opts
     assert not any(o.startswith("--partition") for o in opts)
+    assert not any(o.startswith("--mail") for o in opts)           # mail_user: null = no email
+    cfg.study["slurm"].update(mail_user="netid@princeton.edu", mail_type=["BEGIN", "END", "FAIL"])
+    opts = rp.slurm_options(cfg)
+    assert "--mail-user=netid@princeton.edu" in opts and "--mail-type=BEGIN,END,FAIL" in opts
+    assert bc.check(cfg) == []
+    cfg.study["slurm"].update(mail_user="not an address", mail_type=["DONE"])
+    problems = bc.check(cfg)
+    assert any("mail_user" in p for p in problems) and any("mail_type" in p for p in problems), problems
 
 
 def test_lock_is_exclusive_and_released():

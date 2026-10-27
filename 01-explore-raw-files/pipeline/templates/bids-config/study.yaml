@@ -164,6 +164,15 @@ slurm:
   cpus: 4                   # CPU cores
   partition: null           # null = the cluster's default partition
 
+  # Email from Slurm about the job. mail_user: your address (null = no email). Each person
+  # submitting sets their own. mail_type: when to send, any of
+  #   BEGIN (the job starts running), END (it finished), FAIL (it ended with an error:
+  #   a notebook failed or was skipped), TIME_LIMIT_80 (80% of the
+  #   time used), ALL. Slurm sends no email when the job is only submitted (queued);
+  #   run_bids.sh prints the job number then.
+  mail_user: null           # e.g. "netid@princeton.edu"
+  mail_type: ["END", "FAIL"]
+
 
 # -------------------------------------------------------------------------------------
 #  The other configuration files (relative to this folder)

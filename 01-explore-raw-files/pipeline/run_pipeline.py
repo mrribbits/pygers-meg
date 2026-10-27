@@ -647,6 +647,9 @@ def slurm_options(cfg: bc.Config) -> list:
             f"--output={reports / 'slurm-%j.log'}"]
     if sl["partition"]:
         opts.append(f"--partition={sl['partition']}")
+    # Email notices (optional settings, so older study.yaml files without them still work)
+    if sl.get("mail_user"):
+        opts += [f"--mail-user={sl['mail_user']}", f"--mail-type={','.join(sl.get('mail_type') or ['END', 'FAIL'])}"]
     return opts
 
 

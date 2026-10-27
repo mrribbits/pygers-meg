@@ -99,6 +99,13 @@ $defs:
           mem: {type: string, pattern: "^[0-9]+[KMGT]?$"}
           cpus: {type: integer, minimum: 1}
           partition: {anyOf: [{type: string}, {type: "null"}]}
+          mail_user: {anyOf: [{type: string, pattern: "^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$"}, {type: "null"}]}
+          mail_type:
+            type: array
+            minItems: 1
+            uniqueItems: true
+            items: {enum: [NONE, BEGIN, END, FAIL, REQUEUE, ALL, INVALID_DEPEND, STAGE_OUT, TIME_LIMIT,
+                           TIME_LIMIT_90, TIME_LIMIT_80, TIME_LIMIT_50]}
       files:
         type: object
         additionalProperties: false
