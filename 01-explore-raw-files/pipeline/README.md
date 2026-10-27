@@ -91,11 +91,21 @@ the line changes nothing.
 
 ## When you change a notebook
 
-If you add, rename or remove a setting read with `from_config()`, update
-`bids_config.notebook_settings()`, the schema and the template to match, then run the
-tests (they compare the notebooks with the template), from the 01-explore-raw-files folder:
+Some lines in the notebooks read a setting from the pipeline, e.g.
+`EVENT_ID = from_config("EVENT_ID")`. If you add, rename or remove one of these settings,
+three other places must change to match:
+
+1. `bids_config.py`, function `notebook_settings()`: where the pipeline gets the value.
+2. `bids_config.schema.yaml`: the rule the value must follow.
+3. The template's YAML file (`templates/bids-config/...`): the setting itself, with its comment.
+
+Then run the tests, from the 01-explore-raw-files folder. They compare the notebooks with
+the template, so they fail if one of these was missed:
 
 ```bash
 python pipeline/tests/test_bids_config.py
 python pipeline/tests/test_run_pipeline.py
 ```
+
+Changes that don't touch these settings (text, plots, fixes inside a cell) need nothing
+else, but running the tests does no harm.
