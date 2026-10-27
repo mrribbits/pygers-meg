@@ -3,7 +3,7 @@
 # =====================================================================================
 #
 #  Make one file per subject and session (copy this one, e.g. to sub-02.yaml), then run:
-#      sbatch run_bids.sh /jukebox/<lab>/<study>/bids-config/subjects/sub-01.yaml
+#      bash run_bids.sh /jukebox/<lab>/<study>/bids-config/subjects/sub-01.yaml
 #
 #  Everything else (where the data are, what to run, how to process) comes from
 #  ../study.yaml and the files it points to.
@@ -15,6 +15,8 @@ study_config: "../study.yaml"
 # The BIDS labels: letters and digits only, in quotes. The raw data must be in
 #   <sourcedata_root>/sub-<subject>/ses-<session>/raw/
 # The MRI uses the same session label as the MEG.
+# In a study without sessions (study.sessions: false in study.yaml), write  session: null
+# and the raw data are in  <sourcedata_root>/sub-<subject>/raw/
 subject: "01"
 session: "01"
 

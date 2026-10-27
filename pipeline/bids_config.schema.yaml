@@ -32,9 +32,10 @@ $defs:
       study:
         type: object
         additionalProperties: false
-        required: [task]
+        required: [task, sessions]
         properties:
           task: {$ref: "#/$defs/label"}
+          sessions: {type: boolean}
       paths:
         type: object
         additionalProperties: false
@@ -118,7 +119,7 @@ $defs:
     properties:
       study_config: {$ref: "#/$defs/path"}
       subject: {$ref: "#/$defs/label"}
-      session: {$ref: "#/$defs/label"}
+      session: {$ref: "#/$defs/optional_label"}
       cmeg:
         type: object
         additionalProperties: false

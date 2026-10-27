@@ -79,7 +79,9 @@ def notebook_settings_in_code() -> dict:
 
 # ---- a filled-in copy of the template with a fake raw tree ----------------------------
 
-def filled_config(fill=True) -> Path:
+def filled_config(fill=True, sessions=True) -> Path:
+    """A filled-in copy of the template with a fake raw tree; sessions=False makes it a study
+    without sessions (study.sessions: false, session: null, sourcedata/sub-01/raw/)."""
     root = Path(tempfile.mkdtemp())
     cfg_dir = root / "bids-config"
     shutil.copytree(TEMPLATE, cfg_dir, ignore=shutil.ignore_patterns(".*", "__pycache__"))
@@ -96,7 +98,12 @@ def filled_config(fill=True) -> Path:
                 s = s.replace("EDIT ME: replace this paragraph with the full legal code text if you are publishing the dataset.\n", "")
                 s = s.replace("daysback: null", "daysback: 41234")
                 f.write_text(s, encoding="utf-8")
-    raw = root / "sourcedata" / "sub-01" / "ses-01" / "raw"
+    if not sessions:
+        for name, old, new in [("study.yaml", "  sessions: true", "  sessions: false"),
+                               ("subjects/sub-01.yaml", 'session: "01"', "session: null")]:
+            p = cfg_dir / name
+            p.write_text(p.read_text(encoding="utf-8").replace(old, new, 1), encoding="utf-8")
+    raw = root.joinpath("sourcedata", "sub-01", *(["ses-01"] if sessions else []), "raw")
     for d in ["cMEG", "einscan", "eye", "mri/dcm", "behav"]:
         (raw / d).mkdir(parents=True, exist_ok=True)
     (raw / "eye" / "test.EDF").write_bytes(b"x")
@@ -170,6 +177,31 @@ def test_mistakes_are_caught():
     for file, old, new, expect in cases:
         problems = _problems_after(file, old, new)
         assert any(expect in p for p in problems), (expect, problems)
+
+
+def test_study_without_sessions():
+    cfg = bc.load(filled_config(sessions=False))
+    assert bc.check(cfg) == []
+    inputs = bc.find_inputs(cfg)
+    assert inputs["dicom_template"] == "sub-{subject}/raw/mri/dcm/*.dcm"
+    settings = bc.notebook_settings(cfg, inputs)
+    assert all(s["SESSION"] is None for nb, s in settings.items() if "SESSION" in s)
+    assert Path(settings["04"]["FIF_DATA"]).name == "sub-01_task-oddballftcued_meg.fif"
+    assert Path(settings["01"]["RAW_DIR"]) == cfg.sourcedata_root / "sub-01" / "raw"
+    for nb, s in settings.items():
+        for name in s.get("_paths", []):
+            assert "ses-" not in str(s[name] or ""), (nb, name, s[name])
+
+
+def test_sessions_must_match_the_study():
+    subject_file = filled_config(sessions=False)
+    p = subject_file.parent.parent / "study.yaml"
+    p.write_text(p.read_text(encoding="utf-8").replace("  sessions: false", "  sessions: true"), encoding="utf-8")
+    assert any("session is empty" in x for x in bc.check(bc.load(subject_file)))
+    subject_file = filled_config()
+    p = subject_file.parent.parent / "study.yaml"
+    p.write_text(p.read_text(encoding="utf-8").replace("  sessions: true", "  sessions: false"), encoding="utf-8")
+    assert any("set session: null" in x for x in bc.check(bc.load(subject_file)))
 
 
 if __name__ == "__main__":

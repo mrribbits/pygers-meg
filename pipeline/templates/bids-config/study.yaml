@@ -32,6 +32,13 @@ study:
   # The task label: the part after "task-" in every file name. Letters and digits only.
   task: "oddballftcued"
 
+  # true = the dataset has session folders and labels: sub-01/ses-01/meg/sub-01_ses-01_...
+  # false = no sessions: sub-01/meg/sub-01_task-..., and sourcedata/sub-01/raw/ (no ses-01/).
+  # BIDS allows both. Set false only if every participant comes once: adding sessions to a
+  # study later means renaming every file already in bids/ and sourcedata/.
+  # Every subject file must agree (session: "01" with true, session: null with false).
+  sessions: true
+
 
 # -------------------------------------------------------------------------------------
 #  Where the data are
@@ -42,7 +49,7 @@ study:
 #    ├── bids/                              <- bids_root: the BIDS dataset (anonymized data only)
 #    └── sourcedata/                        <- sourcedata_root
 #        ├── code/heuristic.py              <- the MRI naming rules (written by notebook 03)
-#        └── sub-01/ses-01/
+#        └── sub-01/ses-01/                 <- sub-01/ when study.sessions is false
 #            ├── raw/                       <- the files from the lab, as they came (never changed)
 #            │   ├── cMEG/                  <- one <prefix>_cMEG_Data folder per recording
 #            │   ├── einscan/               <- head digitization files

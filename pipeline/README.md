@@ -47,6 +47,10 @@ What happens:
    the executed notebooks, `settings.yaml`, `config/` (a copy of the configuration files)
    and `pipeline.log`. The Slurm log is `<session>/reports/slurm-<job id>.log`.
 
+Studies without sessions (`study.sessions: false`, `session: null` in each subject file)
+leave out the `ses-` level everywhere: `sourcedata/sub-01/raw/`, `bids/sub-01/meg/`, and
+file names without `_ses-01`. Below, "session folder" then means `sourcedata/sub-01/`.
+
 Exit status: 0 = all chosen notebooks ran; 1 = one failed or was skipped; 2 = pre-flight
 problems.
 

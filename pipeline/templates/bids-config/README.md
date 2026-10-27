@@ -18,7 +18,7 @@ study's.
    | `dataset.yaml` | the BIDS dataset's name, authors, license, version history, participant columns | once per study |
    | `private.yaml` | DAYSBACK, the secret date shift | once per study; keep it private |
    | `text/` | README, task description, instructions, license text | once per study |
-   | `subjects/sub-01.yaml` | one session: labels, recording names, bad channels, participant details | one file per session |
+   | `subjects/sub-01.yaml` | one session: labels, recording names, bad channels, participant details | one file per session (per subject, in a study without sessions) |
 
    Every setting has a comment explaining it. Anything that says `EDIT ME` or contains
    `[yourpath]` must be replaced.
@@ -46,6 +46,15 @@ study's.
 The Scully MEG lab's own settings (hardware, institution) are in
 `pipeline/facility.yaml` in the pygers-meg repository. To change one for your study only,
 set it under `facility_overrides:` in `study.yaml`.
+
+## Studies without sessions
+
+BIDS allows datasets without session labels: `sub-01/meg/sub-01_task-..._meg.fif` instead
+of `sub-01/ses-01/meg/sub-01_ses-01_task-..._meg.fif`. For such a study set
+`study.sessions: false` in `study.yaml` and `session: null` in every subject file; the raw
+data then go in `sourcedata/sub-01/raw/` (no `ses-01/` level). Choose this only if every
+participant comes once: adding sessions later means renaming every file already in `bids/`
+and `sourcedata/`.
 
 ## Placeholders in texts
 

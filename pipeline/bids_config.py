@@ -93,9 +93,29 @@ class Config:
         return Path(self.study["paths"]["bids_root"])
 
     @property
+    def session(self) -> str | None:
+        """The session label, or None in a study without sessions."""
+        return self.subject.get("session")
+
+    @property
+    def ses_parts(self) -> list:
+        """["ses-YY"] (a folder level), or [] without sessions."""
+        return [f"ses-{self.session}"] if self.session else []
+
+    @property
     def session_dir(self) -> Path:
-        """<sourcedata_root>/sub-XX/ses-YY: the session's raw data and every intermediate file."""
-        return self.sourcedata_root / f"sub-{self.subject['subject']}" / f"ses-{self.subject['session']}"
+        """<sourcedata_root>/sub-XX/ses-YY (or sub-XX without sessions): the session's raw data
+        and every intermediate file."""
+        return self.sourcedata_root.joinpath(f"sub-{self.subject['subject']}", *self.ses_parts)
+
+    def bids_dir(self, root: Path | None = None) -> Path:
+        """<root>/sub-XX/ses-YY (or sub-XX): this session's folder in a BIDS-like tree."""
+        return Path(root or self.bids_root).joinpath(f"sub-{self.subject['subject']}", *self.ses_parts)
+
+    @property
+    def label(self) -> str:
+        """e.g. "sub-01, ses-01" or "sub-01", for messages."""
+        return f"sub-{self.subject['subject']}" + (f", ses-{self.session}" if self.session else "")
 
     @property
     def raw_dir(self) -> Path:
@@ -103,8 +123,8 @@ class Config:
 
     @property
     def stem(self) -> str:
-        """sub-XX_ses-YY, the start of every file name."""
-        return f"sub-{self.subject['subject']}_ses-{self.subject['session']}"
+        """sub-XX_ses-YY (or sub-XX without sessions), the start of every file name."""
+        return f"sub-{self.subject['subject']}" + (f"_ses-{self.session}" if self.session else "")
 
 
 # =====================================================================================
@@ -286,6 +306,15 @@ def _cross_problems(cfg: Config) -> list:
     if dupes:
         p.append(f"processing.yaml: events.event_id uses the code(s) {dupes} for more than one name")
 
+    # Sessions: every subject file follows the study's choice
+    sessions, ses = cfg.study.get("study", {}).get("sessions"), cfg.subject.get("session")
+    if sessions is True and not ses:
+        p.append(f"{cfg.subject_file.name}: session is empty, but study.yaml says the study has sessions "
+                 "(study.sessions: true); give the session label, e.g. \"01\"")
+    if sessions is False and ses:
+        p.append(f"{cfg.subject_file.name}: session is {ses!r}, but study.yaml says the study has no sessions "
+                 "(study.sessions: false); set session: null")
+
     # Software: the MRI containers are needed when the study has MRI
     sw = cfg.study.get("software", {})
     if cfg.study.get("data", {}).get("mri"):
@@ -417,7 +446,8 @@ def find_inputs(cfg: Config) -> dict:
 
     if data["mri"]:
         mri_dir = cfg.raw_dir / "mri"
-        rel = "sub-{subject}/ses-{session}/raw/mri"   # relative to sourcedata_root, as HeuDiConv wants it
+        # relative to sourcedata_root, as HeuDiConv wants it ({subject}/{session} filled in by HeuDiConv)
+        rel = "sub-{subject}/" + ("ses-{session}/" if cfg.session else "") + "raw/mri"
         pattern = cfg.processing["mri_conversion"]["dicom_files"]
         if not mri_dir.is_dir():
             problems.append(f"No mri/ folder in {cfg.raw_dir} (or set data.mri: false in study.yaml)")
@@ -682,7 +712,7 @@ def main(argv=None) -> int:
             print("  -", item)
         return 1
     print(f"OK: the configuration for {cfg.subject_file.name} is complete "
-          f"(sub-{cfg.subject['subject']}, ses-{cfg.subject['session']}, task-{cfg.study['study']['task']}).")
+          f"({cfg.label}, task-{cfg.study['study']['task']}).")
     if args.show:
         print(yaml.safe_dump({args.show: notebook_settings(cfg, inputs)[args.show]},
                              sort_keys=False, allow_unicode=True, width=100))

@@ -53,6 +53,17 @@ def test_inputs_from_notebooks_that_dont_run_must_exist():
         assert any(f"from notebook {producer}, which isn't chosen" in p for p in problems), problems
 
 
+def test_paths_without_sessions():
+    cfg = bc.load(filled_config(sessions=False))
+    settings = bc.notebook_settings(cfg, bc.find_inputs(cfg))
+    for step, needs in rp.requirements(cfg, settings).items():
+        for producer, what, paths, check in needs:
+            assert "ses-" not in str(paths[0]), (step, paths[0])
+    assert str(rp.requirements(cfg, settings)["05"][-1][2][0]).endswith("bids/sub-01/meg/sub-01_task-oddballftcued*_meg.fif")
+    assert "--job-name=bids_sub-01" in rp.slurm_options(cfg)
+    assert cfg.session_dir == cfg.sourcedata_root / "sub-01"
+
+
 def test_steps_option():
     assert rp._parse_steps("4,5") == ["04", "05"]
     try:

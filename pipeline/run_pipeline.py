@@ -211,7 +211,7 @@ def requirements(cfg: bc.Config, settings: dict) -> dict:
     another one. check(paths) -> True when the files are there."""
     s04, s05 = settings["04"], settings["05"]
     S = cfg.session_dir
-    sub, ses, task = cfg.subject["subject"], cfg.subject["session"], cfg.study["study"]["task"]
+    task = cfg.study["study"]["task"]
     data = cfg.study["data"]
     exists = lambda paths: all(Path(p).exists() for p in paths)              # noqa: E731
     any_match = lambda paths: any(any(Path(p).parent.glob(Path(p).name)) for p in paths)  # noqa: E731
@@ -223,12 +223,12 @@ def requirements(cfg: bc.Config, settings: dict) -> dict:
         cand = fif_data.with_name(fif_data.stem + "_bad_channel_candidates.tsv")
         req["04"].append(("01", "the bad-channel candidates (bad_channels: auto)", [cand], exists))
     if data["mri"]:
-        req["04"].append(("03", "the converted MRI", [S / "mri-staging" / f"sub-{sub}" / f"ses-{ses}"], exists))
+        req["04"].append(("03", "the converted MRI", [cfg.bids_dir(S / "mri-staging")], exists))
     if data["eye_tracking"]:
         req["05"].append(("02", "the eye2bids files",
                           [Path(s05["EYE2BIDS_DIR"]) / f"{cfg.stem}_task-{task}*_physio.tsv.gz"], any_match))
     req["05"].append(("04", "the MEG recording in the BIDS dataset",
-                      [cfg.bids_root / f"sub-{sub}" / f"ses-{ses}" / "meg" / f"{cfg.stem}_task-{task}*_meg.fif"],
+                      [cfg.bids_dir() / "meg" / f"{cfg.stem}_task-{task}*_meg.fif"],
                       any_match))
     req["06"].append(("04", "a BIDS dataset", [cfg.bids_root / "dataset_description.json"], exists))
     return req
@@ -405,7 +405,7 @@ def staleness_warnings(cfg: bc.Config, steps: dict, settings: dict) -> list:
               [settings["04"]["FIF_DATA"], settings["04"]["FIF_EMPTYROOM"]],
               "Run 01 again (with options.force_reconvert: true).")
         if cfg.study["data"]["mri"]:
-            check("03", [raw / "mri"], [S / "mri-staging" / f"sub-{cfg.subject['subject']}"], "Run 03 again.")
+            check("03", [raw / "mri"], [cfg.bids_dir(S / "mri-staging")], "Run 03 again.")
     if run & {"05"} and cfg.study["data"]["eye_tracking"] and settings["02"]["EDF_FILE"]:
         check("02", [settings["02"]["EDF_FILE"]], [S / "eye-staging"], "Run 02 again.")
     return out
@@ -773,8 +773,7 @@ def main(argv=None) -> int:
     else:
         warnings, facts = [], []
 
-    log.info(f"Configuration: {cfg.subject_file} (sub-{cfg.subject['subject']}, ses-{cfg.subject['session']}, "
-             f"task-{cfg.study['study']['task']})")
+    log.info(f"Configuration: {cfg.subject_file} ({cfg.label}, task-{cfg.study['study']['task']})")
     for k, s in steps.items():
         log.info(f"  {k} {'run ' if s.status == 'planned' else 'skip'}  {STEP_NAMES[k]}"
                  + (f"  [{s.reason}]" if s.reason else ""))
