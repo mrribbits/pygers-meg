@@ -2,7 +2,8 @@
 #  subjects/sub-01.yaml: one recording session (this is the file you submit)
 # =====================================================================================
 #
-#  Make one file per subject and session (copy this one, e.g. to sub-02.yaml), then run:
+#  Make one file per subject and session (copy this one, e.g. to sub-02.yaml), then run
+#  (from pygers-meg's 01-explore-raw-files folder):
 #      bash run_bids.sh /jukebox/<lab>/<study>/bids-config/subjects/sub-01.yaml
 #
 #  Everything else (where the data are, what to run, how to process) comes from

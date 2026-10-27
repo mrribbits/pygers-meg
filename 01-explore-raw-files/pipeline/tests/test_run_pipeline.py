@@ -1,6 +1,6 @@
 """Checks the pipeline's step rules and pre-flight checks (no notebooks are run).
 
-Run either way (in the pygers-meg environment, from the pygers-meg folder):
+Run either way (in the pygers-meg environment, from pygers-meg's 01-explore-raw-files folder):
     python pipeline/tests/test_run_pipeline.py
     python -m pytest pipeline/tests
 """

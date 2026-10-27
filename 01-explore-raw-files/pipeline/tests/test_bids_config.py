@@ -1,6 +1,6 @@
 """Checks that the bids-config template and the notebooks agree.
 
-Run either way (in the pygers-meg environment, from the pygers-meg folder):
+Run either way (in the pygers-meg environment, from pygers-meg's 01-explore-raw-files folder):
     python pipeline/tests/test_bids_config.py
     python -m pytest pipeline/tests
 
@@ -24,8 +24,7 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 PIPELINE = HERE.parent
-REPO = PIPELINE.parent
-NOTEBOOKS_DIR = REPO / "01-explore-raw-files"
+NOTEBOOKS_DIR = PIPELINE.parent    # the notebooks are in the folder above pipeline/
 TEMPLATE = PIPELINE / "templates" / "bids-config"
 sys.path.insert(0, str(PIPELINE))
 import bids_config as bc  # noqa: E402

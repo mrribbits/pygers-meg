@@ -23,7 +23,8 @@ study's.
    Every setting has a comment explaining it. Anything that says `EDIT ME` or contains
    `[yourpath]` must be replaced.
 3. Check the configuration (on scotty, in the `pygers-meg` environment, from the
-   pygers-meg folder):
+   pygers-meg's
+   01-explore-raw-files folder):
 
    ```bash
    python pipeline/bids_config.py /jukebox/<lab>/<study>/bids-config/subjects/sub-01.yaml
@@ -44,7 +45,7 @@ study's.
    choosing the bad channels first, see below).
 
 The Scully MEG lab's own settings (hardware, institution) are in
-`pipeline/facility.yaml` in the pygers-meg repository. To change one for your study only,
+`01-explore-raw-files/pipeline/facility.yaml` in the pygers-meg repository. To change one for your study only,
 set it under `facility_overrides:` in `study.yaml`.
 
 ## Studies without sessions

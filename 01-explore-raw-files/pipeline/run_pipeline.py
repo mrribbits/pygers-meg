@@ -1,7 +1,7 @@
 """Run the Pygers-MEG notebooks for one subject/session, with HTML reports.
 
 Normally started by run_bids.sh (which submits it to Slurm), but it also runs on its own,
-in the pygers-meg environment, from any folder:
+in the pygers-meg environment, from pygers-meg's 01-explore-raw-files folder:
 
     python pipeline/run_pipeline.py /path/to/bids-config/subjects/sub-01.yaml
     python pipeline/run_pipeline.py .../sub-01.yaml --steps 04,05   # only these (plus the rules below)
@@ -49,8 +49,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 PIPELINE_DIR = Path(__file__).resolve().parent
-REPO_DIR = PIPELINE_DIR.parent
-NOTEBOOKS_DIR = REPO_DIR / "01-explore-raw-files"
+NOTEBOOKS_DIR = PIPELINE_DIR.parent        # the notebooks are in the folder above pipeline/
+REPO_DIR = NOTEBOOKS_DIR.parent             # the pygers-meg repository (for its git version)
 sys.path.insert(0, str(PIPELINE_DIR))
 import bids_config as bc  # noqa: E402
 

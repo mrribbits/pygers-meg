@@ -1,6 +1,6 @@
 # pipeline/
 
-Runs the six notebooks in `01-explore-raw-files/` as one cluster job, with the
+Runs the six notebooks in this folder's parent, `01-explore-raw-files/`, as one cluster job, with the
 settings for a study taken from YAML files instead of edited into the notebooks.
 The notebooks still work on their own exactly as before.
 
@@ -16,7 +16,7 @@ The notebooks still work on their own exactly as before.
 
 ## Running a session
 
-On scotty, in the `pygers-meg` environment, from the pygers-meg folder:
+On scotty, in the `pygers-meg` environment, from pygers-meg's 01-explore-raw-files folder:
 
 ```bash
 bash run_bids.sh /jukebox/<lab>/<study>/bids-config/subjects/sub-01.yaml            # check, then submit
@@ -60,7 +60,7 @@ pre-flight check says that kernel belongs to another environment, register this 
 
 ## Checking a study's configuration
 
-On scotty, in the `pygers-meg` environment, from the pygers-meg folder:
+On scotty, in the `pygers-meg` environment, from pygers-meg's 01-explore-raw-files folder:
 
 ```bash
 python pipeline/bids_config.py /jukebox/<lab>/<study>/bids-config/subjects/sub-01.yaml
@@ -83,7 +83,7 @@ the line changes nothing.
 
 If you add, rename or remove a setting read with `from_config()`, update
 `bids_config.notebook_settings()`, the schema and the template to match, then run the
-tests (they compare the notebooks with the template):
+tests (they compare the notebooks with the template), from the 01-explore-raw-files folder:
 
 ```bash
 python pipeline/tests/test_bids_config.py

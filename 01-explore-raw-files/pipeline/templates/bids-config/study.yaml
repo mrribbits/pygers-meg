@@ -13,11 +13,11 @@
 #    text/             long texts: README, task description, instructions, license
 #    subjects/         one file per subject/session: labels, recording names, bad channels
 #
-#  To run one subject (on scotty, in the pygers-meg environment, from the pygers-meg folder):
+#  To run one subject (on scotty, in the pygers-meg environment, from pygers-meg's 01-explore-raw-files folder):
 #      bash run_bids.sh /jukebox/<lab>/<study>/bids-config/subjects/sub-01.yaml
 #
 #  The Scully MEG lab's own settings (hardware, institution) are in
-#  pipeline/facility.yaml in the pygers-meg repository. Change any of them for this
+#  01-explore-raw-files/pipeline/facility.yaml in the pygers-meg repository. Change any of them for this
 #  study under facility_overrides: at the end of this file.
 #
 #  Values written as "EDIT ME" must be replaced: the pipeline refuses to run while any
@@ -168,7 +168,7 @@ slurm:
 # -------------------------------------------------------------------------------------
 #  The other configuration files (relative to this folder)
 # -------------------------------------------------------------------------------------
-#  facility: null = pipeline/facility.yaml in the pygers-meg repository (Recommended).
+#  facility: null = 01-explore-raw-files/pipeline/facility.yaml in pygers-meg (Recommended).
 files:
   processing: "processing.yaml"
   dataset: "dataset.yaml"
@@ -180,7 +180,7 @@ files:
 # -------------------------------------------------------------------------------------
 #  Changes to the facility settings for this study only
 # -------------------------------------------------------------------------------------
-#  Same names and layout as pipeline/facility.yaml; only what you set here changes.
+#  Same names and layout as 01-explore-raw-files/pipeline/facility.yaml; only what you set here changes.
 #  Example:
 #    facility_overrides:
 #      meg:

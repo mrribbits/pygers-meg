@@ -14,7 +14,8 @@ A study's settings are spread over several YAML files (see templates/bids-config
 This module reads them all (starting from the subject file), checks them, and turns them
 into the exact settings each notebook asks for with from_config(), e.g. "EVENT_ID".
 
-Check a configuration from the command line (on scotty, in the pygers-meg environment):
+Check a configuration from the command line (on scotty, in the pygers-meg environment, from
+pygers-meg's 01-explore-raw-files folder):
 
     python pipeline/bids_config.py /path/to/bids-config/subjects/sub-01.yaml
     python pipeline/bids_config.py /path/to/bids-config/subjects/sub-01.yaml --show 04

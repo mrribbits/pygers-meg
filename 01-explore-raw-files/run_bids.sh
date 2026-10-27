@@ -3,7 +3,7 @@
 #  run_bids.sh: convert one subject/session to BIDS on scotty (the Pygers-MEG pipeline)
 # =====================================================================================
 #
-#  On scotty, in the pygers-meg environment, from the pygers-meg folder:
+#  On scotty, in the pygers-meg environment, from pygers-meg's 01-explore-raw-files folder:
 #
 #      conda activate pygers-meg
 #      bash run_bids.sh /jukebox/<lab>/<study>/bids-config/subjects/sub-01.yaml
@@ -41,20 +41,20 @@ usage() {
 
 # ---- inside a Slurm job: run the pipeline ----
 if [[ -n "${SLURM_JOB_ID:-}" ]]; then
-    # sbatch runs a copy of this script, so find the repository from where it was submitted
-    REPO="${PYGERS_MEG_DIR:-${SLURM_SUBMIT_DIR:-$PWD}}"
+    # sbatch runs a copy of this script, so find its folder (01-explore-raw-files) from where it was submitted
+    HERE="${PYGERS_PIPELINE_DIR:-${SLURM_SUBMIT_DIR:-$PWD}}"
     PY="${PYGERS_PYTHON:-$(command -v python)}"
-    if [[ ! -f "$REPO/pipeline/run_pipeline.py" ]]; then
-        echo "run_bids.sh: can't find pipeline/run_pipeline.py in $REPO; submit from the pygers-meg folder." >&2
+    if [[ ! -f "$HERE/pipeline/run_pipeline.py" ]]; then
+        echo "run_bids.sh: can't find pipeline/run_pipeline.py in $HERE; submit from pygers-meg's 01-explore-raw-files folder." >&2
         exit 2
     fi
     echo "Slurm job $SLURM_JOB_ID on $(hostname), $(date)"
     echo "Python: $PY"
-    exec "$PY" "$REPO/pipeline/run_pipeline.py" "$@"
+    exec "$PY" "$HERE/pipeline/run_pipeline.py" "$@"
 fi
 
 # ---- on the login node: check, then submit ----
-REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"   # 01-explore-raw-files, with pipeline/ in it
 [[ $# -ge 1 && "$1" != -* ]] || usage
 SUBJECT_FILE="$(realpath "$1")"; shift
 
@@ -79,13 +79,13 @@ if [[ -z "$PY" ]] || ! "$PY" -c "import papermill, yaml, jsonschema" 2>/dev/null
 fi
 
 if [[ $LOCAL -eq 1 ]]; then
-    exec "$PY" "$REPO/pipeline/run_pipeline.py" "$SUBJECT_FILE" ${ARGS[@]+"${ARGS[@]}"}
+    exec "$PY" "$HERE/pipeline/run_pipeline.py" "$SUBJECT_FILE" ${ARGS[@]+"${ARGS[@]}"}
 fi
 
-"$PY" "$REPO/pipeline/run_pipeline.py" "$SUBJECT_FILE" ${ARGS[@]+"${ARGS[@]}"} --check || exit $?
+"$PY" "$HERE/pipeline/run_pipeline.py" "$SUBJECT_FILE" ${ARGS[@]+"${ARGS[@]}"} --check || exit $?
 [[ $CHECK_ONLY -eq 1 ]] && exit 0
 
-read -r -a SBATCH_OPTS <<< "$("$PY" "$REPO/pipeline/run_pipeline.py" "$SUBJECT_FILE" --slurm-options)"
-export PYGERS_MEG_DIR="$REPO" PYGERS_PYTHON="$PY"
+read -r -a SBATCH_OPTS <<< "$("$PY" "$HERE/pipeline/run_pipeline.py" "$SUBJECT_FILE" --slurm-options)"
+export PYGERS_PIPELINE_DIR="$HERE" PYGERS_PYTHON="$PY"
 echo "Submitting: sbatch ${SBATCH_OPTS[*]}"
-sbatch --export=ALL "${SBATCH_OPTS[@]}" "$REPO/run_bids.sh" "$SUBJECT_FILE" ${ARGS[@]+"${ARGS[@]}"}
+sbatch --export=ALL "${SBATCH_OPTS[@]}" "$HERE/run_bids.sh" "$SUBJECT_FILE" ${ARGS[@]+"${ARGS[@]}"}
