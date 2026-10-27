@@ -10,51 +10,69 @@ to change it) is in `01-explore-raw-files/pipeline/README.md` in the pygers-meg 
 
 ## Setting up a new study
 
-1. Copy this whole folder next to your study's data, e.g.
-   `/jukebox/<lab>/<study>/bids-config/`. Keep it outside the BIDS dataset.
-2. Edit the files, in this order:
+### Step 1: Copy this folder
 
-   | File | What's in it | Change |
-   |---|---|---|
-   | `study.yaml` | where the data are, your software (containers, edf2asc), what was recorded, what to run, options, job settings | once per study |
-   | `processing.yaml` | how each notebook processes the data: events, MRI naming words, sync rules, behavioral columns | once per study (task-specific) |
-   | `dataset.yaml` | the BIDS dataset's name, authors, license, version history, participant columns | once per study |
-   | `private.yaml` | DAYSBACK, the secret date shift | once per study; keep it private |
-   | `text/` | README, task description, instructions, license text | once per study |
-   | `subjects/sub-01.yaml` | one session: labels, recording names, bad channels, participant details | one file per session (per subject, in a study without sessions) |
+Copy this whole `bids-config` folder next to your study's data, for example to
+`/jukebox/<lab>/<study>/bids-config/`. Keep it outside the BIDS dataset.
 
-   Every setting has a comment explaining it. Anything that says `EDIT ME` or contains
-   `[yourpath]` must be replaced.
-3. Check and run. On scotty, from pygers-meg's `01-explore-raw-files` folder:
+### Step 2: Edit the files
 
-   ```bash
-   conda activate pygers-meg
-   cd <your pygers-meg folder>/01-explore-raw-files
-   ```
+| File | What's in it | How often |
+|---|---|---|
+| `study.yaml` | where the data are, your software (containers, edf2asc), what was recorded, what to run, options, job settings | once per study |
+| `processing.yaml` | how each notebook processes the data: events, MRI naming words, sync rules, behavioral columns | once per study |
+| `dataset.yaml` | the BIDS dataset's name, authors, license, version history, participant columns | once per study |
+| `private.yaml` | DAYSBACK, the secret date shift (keep this file private) | once per study |
+| `text/` | README, task description, instructions, license text | once per study |
+| `subjects/sub-01.yaml` | one session: labels, recording names, bad channels, participant details | one file per session |
 
-   There are two checks. Both only look; neither changes anything.
+Every setting has a comment explaining it. Replace everything that says `EDIT ME` or
+contains `[yourpath]`.
 
-   | Command | What it checks | When to use it |
-   |---|---|---|
-   | `python pipeline/bids_config.py <subject file>` | the YAML files: misspelled or missing settings, leftover `EDIT ME`, settings that disagree; and that the .edf and DICOMs can be found | while you edit the files (quick) |
-   | `bash run_bids.sh <subject file> --check` | all of that, plus everything a real run needs: the raw recordings, your containers and software, and which notebooks would run | once, before you submit |
+The Scully MEG lab's own settings (hardware, institution) are not in this folder: they
+are in `01-explore-raw-files/pipeline/facility.yaml` in the pygers-meg repository. To
+change one for your study only, set it under `facility_overrides:` in `study.yaml`.
 
-   `bids_config.py ... --show 04` also prints the exact settings notebook 04 (or any
-   notebook) would receive.
+### Step 3: Check your settings
 
-   Then submit:
+On scotty, activate the environment and go to the `01-explore-raw-files` folder of your
+pygers-meg copy:
 
-   ```bash
-   bash run_bids.sh /jukebox/<lab>/<study>/bids-config/subjects/sub-01.yaml
-   ```
+```bash
+conda activate pygers-meg
+cd <your pygers-meg folder>/01-explore-raw-files
+```
 
-   This runs the same full check first and submits the Slurm job only if it passes. The
-   reports appear in the session's `reports/<date-time>/` folder: open `index.html`.
-   `--steps 01` runs only notebook 01 (useful for choosing the bad channels first, see below).
+There are two checks. Neither changes anything.
 
-The Scully MEG lab's own settings (hardware, institution) are in
-`01-explore-raw-files/pipeline/facility.yaml` in the pygers-meg repository. To change one for your study only,
-set it under `facility_overrides:` in `study.yaml`.
+| Command | What it checks | When to use it |
+|---|---|---|
+| `python pipeline/bids_config.py <subject file>` | the YAML files: misspelled or missing settings, leftover `EDIT ME`, settings that disagree; and that the .edf and DICOMs can be found | while you edit (quick) |
+| `bash run_bids.sh <subject file> --check` | all of that, plus everything a real run needs: the raw recordings, your containers and software, and which notebooks would run | before you submit |
+
+For example:
+
+```bash
+python pipeline/bids_config.py /jukebox/<lab>/<study>/bids-config/subjects/sub-01.yaml
+```
+
+Each check lists every problem it finds, or says everything is complete. Adding
+`--show 04` to the first one also prints the exact settings notebook 04 (or any other
+notebook) would receive.
+
+### Step 4: Run a session
+
+From the same place:
+
+```bash
+bash run_bids.sh /jukebox/<lab>/<study>/bids-config/subjects/sub-01.yaml
+```
+
+This runs the full check again and, if it passes, submits a Slurm job. When the job is
+done, open `index.html` in the session's `reports/<date-time>/` folder.
+
+To run only notebook 01 (for example to choose the bad channels first, see below), add
+`--steps 01`.
 
 ## Studies without sessions
 
