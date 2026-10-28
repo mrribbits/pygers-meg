@@ -50,8 +50,8 @@ TEXT_FILES = {
     "license": "LICENSE.txt",
 }
 
-# The sections at the end of study.yaml that describe the published dataset (until
-# October 2026 a separate dataset.yaml). load() keeps them apart, in Config.dataset.
+# The sections at the end of study.yaml that describe the published dataset. load() keeps
+# them apart from the other study settings, in Config.dataset.
 DATASET_KEYS = ("description", "citation", "changes", "participants_columns", "task_sidecar")
 
 # The {placeholders} notebook 04 can fill in (its fill_placeholders function). Keep in step
