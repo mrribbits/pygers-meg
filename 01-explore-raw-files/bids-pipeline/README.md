@@ -1,4 +1,4 @@
-# pipeline/: the Pygers-MEG-to-BIDS pipeline
+# bids-pipeline/: the Pygers-MEG-to-BIDS pipeline
 
 Runs the six notebooks in this folder's parent, `01-explore-raw-files/`, as one cluster job, with the
 settings for a study taken from YAML files instead of edited into the notebooks.
@@ -14,8 +14,8 @@ with its configuration.
 | `templates/bids-config/` | the folder a study copies and fills in (see its README.md) |
 | `bids_config.py` | reads a study's configuration, checks it, and turns it into the settings each notebook asks for |
 | `bids_config.schema.yaml` | the rules each configuration file must follow |
-| `run_pipeline.py` | runs the notebooks for one session with papermill and writes the HTML reports |
-| `../run_bids.sh` | checks a session, then submits `run_pipeline.py` as a Slurm job |
+| `run_bids-pipeline.py` | runs the notebooks for one session with papermill and writes the HTML reports |
+| `../run_bids-pipeline.sh` | checks a session, then submits `run_bids-pipeline.py` as a Slurm job |
 | `tests/` | checks that the template and the notebooks agree, and the step rules |
 
 ## Running a session
@@ -23,9 +23,9 @@ with its configuration.
 On scotty, in the `pygers-meg` environment, from pygers-meg's 01-explore-raw-files folder:
 
 ```bash
-bash run_bids.sh /jukebox/<lab>/<study>/bids-config/subjects/sub-01.yaml            # check, then submit
-bash run_bids.sh /jukebox/<lab>/<study>/bids-config/subjects/sub-01.yaml --check    # only check
-bash run_bids.sh /jukebox/<lab>/<study>/bids-config/subjects/sub-01.yaml --steps 01 # only notebook 01
+bash run_bids-pipeline.sh /jukebox/<lab>/<study>/bids-config/subjects/sub-01.yaml            # check, then submit
+bash run_bids-pipeline.sh /jukebox/<lab>/<study>/bids-config/subjects/sub-01.yaml --check    # only check
+bash run_bids-pipeline.sh /jukebox/<lab>/<study>/bids-config/subjects/sub-01.yaml --steps 01 # only notebook 01
 ```
 
 What happens:
@@ -37,7 +37,7 @@ What happens:
    notebooks need from notebooks that won't run must already exist. Any problem stops
    here, before anything is changed, with the whole list. Warnings (not stops): a
    notebook that won't run whose output is older than its input.
-2. **Which notebooks run**: `steps:` in study.yaml (or `--steps`), minus those whose data
+2. **Which notebooks run**: `steps:` in global-study.yaml (or `--steps`), minus those whose data
    the study doesn't have (`data:`). If 04 runs, 05 runs too; 06 always runs last.
 3. **Running**: each notebook runs with papermill, reading its settings from the run's
    `settings.yaml`. A failed notebook doesn't stop the others, but the notebooks that need
@@ -50,7 +50,7 @@ What happens:
    notebook (code hidden or shown with a button; `report.hide_code` sets the start),
    the executed notebooks, `settings.yaml`, `config/` (a copy of the configuration files)
    and `pipeline.log`. The Slurm log is `<session>/reports/slurm-<job id>.log`.
-6. **Email** (optional): set `slurm.mail_user` in study.yaml to get Slurm's email when the job
+6. **Email** (optional): set `slurm.mail_user` in global-study.yaml to get Slurm's email when the job
    ends or fails (`mail_type`, e.g. `["BEGIN", "END", "FAIL"]`).
 
 Studies without sessions (`study.sessions: false`, `session: null` in each subject file)
@@ -69,11 +69,11 @@ pre-flight check says that kernel belongs to another environment, register this 
 On scotty, in the `pygers-meg` environment, from pygers-meg's 01-explore-raw-files folder:
 
 ```bash
-python pipeline/bids_config.py /jukebox/<lab>/<study>/bids-config/subjects/sub-01.yaml
+python bids-pipeline/bids_config.py /jukebox/<lab>/<study>/bids-config/subjects/sub-01.yaml
 ```
 
 This checks only the configuration files (and that the .edf and DICOMs can be found); it's
-quick and needs no other software. `bash run_bids.sh <subject file> --check` runs the full
+quick and needs no other software. `bash run_bids-pipeline.sh <subject file> --check` runs the full
 pre-flight check described above, which includes this one.
 
 ## How a notebook gets its settings
@@ -103,8 +103,8 @@ Then run the tests, from the 01-explore-raw-files folder. They compare the noteb
 the template, so they fail if one of these was missed:
 
 ```bash
-python pipeline/tests/test_bids_config.py
-python pipeline/tests/test_run_pipeline.py
+python bids-pipeline/tests/test_bids_config.py
+python bids-pipeline/tests/test_run_pipeline.py
 ```
 
 Changes that don't touch these settings (text, plots, fixes inside a cell) need nothing

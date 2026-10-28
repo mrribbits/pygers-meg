@@ -4,11 +4,11 @@
 #
 #  These settings are the same for every study recorded in the lab: the MEG hardware,
 #  the institution, how the trigger and analog channels are wired. (Each user's own
-#  software, the containers and edf2asc, is set in the study's study.yaml.) The facility keeps this file up to date; studies normally
+#  software, the containers and edf2asc, is set in the study's global-study.yaml.) The facility keeps this file up to date; studies normally
 #  don't edit it.
 #
 #  A study that needs a different value (another site, a different setup) does NOT
-#  edit this file. It sets the value under "facility_overrides:" in its own study.yaml,
+#  edit this file. It sets the value under "facility_overrides:" in its own global-study.yaml,
 #  using the same names as here, e.g.
 #
 #      facility_overrides:

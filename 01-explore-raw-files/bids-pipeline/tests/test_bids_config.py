@@ -1,8 +1,8 @@
 """Checks that the notebooks, the bids-config template and bids_config.py agree.
 
 Run either way (in the pygers-meg environment, from pygers-meg's 01-explore-raw-files folder):
-    python pipeline/tests/test_bids_config.py
-    python -m pytest pipeline/tests
+    python bids-pipeline/tests/test_bids_config.py
+    python -m pytest bids-pipeline/tests
 
 No notebook is run and no real data is touched: each test builds a fake study (a filled-in
 copy of the template and an empty raw folder tree) in a temporary folder.
@@ -21,7 +21,7 @@ The tests (see tests/README.md for more):
   test_sessions_must_match_the_study     a subject file that disagrees with sessions: is reported
 
 If one fails after you changed a notebook, see "When you change a notebook" in
-pipeline/README.md.
+bids-pipeline/README.md.
 """
 from __future__ import annotations
 
@@ -35,7 +35,7 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 PIPELINE = HERE.parent
-NOTEBOOKS_DIR = PIPELINE.parent    # the notebooks are in the folder above pipeline/
+NOTEBOOKS_DIR = PIPELINE.parent    # the notebooks are in the folder above bids-pipeline/
 TEMPLATE = PIPELINE / "templates" / "bids-config"
 sys.path.insert(0, str(PIPELINE))
 import bids_config as bc  # noqa: E402
@@ -109,7 +109,7 @@ def filled_config(fill=True, sessions=True) -> Path:
                 s = s.replace("daysback: null", "daysback: 41234")
                 f.write_text(s, encoding="utf-8")
     if not sessions:
-        for name, old, new in [("study.yaml", "  sessions: true", "  sessions: false"),
+        for name, old, new in [("global-study.yaml", "  sessions: true", "  sessions: false"),
                                ("subjects/sub-01.yaml", 'session: "01"', "session: null")]:
             p = cfg_dir / name
             p.write_text(p.read_text(encoding="utf-8").replace(old, new, 1), encoding="utf-8")
@@ -174,16 +174,16 @@ def _problems_after(file, old, new):
 def test_mistakes_are_caught():
     cases = [
         ("processing.yaml", "  keep_work: false", "  keep_wrok: false", "misspelled"),
-        ("study.yaml", "  overwrite: true", "  overwrite: maybe", "true or false"),
+        ("global-study.yaml", "  overwrite: true", "  overwrite: maybe", "true or false"),
         ("processing.yaml", "    error feedback: 32\n", "    error feedback: 32\n    button: 64\n", "no description"),
         ("processing.yaml", '    blink_cue: "blink"', '    blink_cue: "blinks"', "name_map"),
         ("subjects/sub-01.yaml", '  handedness: "right"', '  handedness: "right"\n  weight: 70', "participants_columns"),
         ("text/README.md", "## Task: {task}", "## Task: {task_name}", "unknown placeholder"),
         ("subjects/sub-01.yaml", 'subject: "01"', 'subject: "sub-01"', "letters and digits"),
-        ("study.yaml", '/sourcedata"', '/bids/sourcedata"', "inside"),
-        ("study.yaml", 'date: "2026-11-01"', 'date: "Nov 1"', "study.yaml: changes[0].date"),
-        ("subjects/sub-01.yaml", '  handedness: "right"', '  handedness: "right"\n  hand: "x"', "describe them in study.yaml"),
-        ("study.yaml", '  pydeface_sif: "/jukebox/pinsk/singularity-containers/pydeface/pydeface-2026-08-10.sif"',
+        ("global-study.yaml", '/sourcedata"', '/bids/sourcedata"', "inside"),
+        ("global-study.yaml", 'date: "2026-11-01"', 'date: "Nov 1"', "global-study.yaml: changes[0].date"),
+        ("subjects/sub-01.yaml", '  handedness: "right"', '  handedness: "right"\n  hand: "x"', "describe them in global-study.yaml"),
+        ("global-study.yaml", '  pydeface_sif: "/jukebox/pinsk/singularity-containers/pydeface/pydeface-2026-08-10.sif"',
          "  pydeface_sif: null", "needed because data.mri"),
     ]
     for file, old, new, expect in cases:
@@ -207,11 +207,11 @@ def test_study_without_sessions():
 
 def test_sessions_must_match_the_study():
     subject_file = filled_config(sessions=False)
-    p = subject_file.parent.parent / "study.yaml"
+    p = subject_file.parent.parent / "global-study.yaml"
     p.write_text(p.read_text(encoding="utf-8").replace("  sessions: false", "  sessions: true"), encoding="utf-8")
     assert any("session is empty" in x for x in bc.check(bc.load(subject_file)))
     subject_file = filled_config()
-    p = subject_file.parent.parent / "study.yaml"
+    p = subject_file.parent.parent / "global-study.yaml"
     p.write_text(p.read_text(encoding="utf-8").replace("  sessions: true", "  sessions: false"), encoding="utf-8")
     assert any("set session: null" in x for x in bc.check(bc.load(subject_file)))
 

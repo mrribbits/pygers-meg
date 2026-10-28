@@ -1,16 +1,16 @@
 #!/bin/bash
 # =====================================================================================
-#  run_bids.sh: convert one subject/session to BIDS on scotty (the Pygers-MEG-to-BIDS pipeline)
+#  run_bids-pipeline.sh: convert one subject/session to BIDS on scotty (the Pygers-MEG-to-BIDS pipeline)
 # =====================================================================================
 #
 #  On scotty, in the pygers-meg environment, from pygers-meg's 01-explore-raw-files folder:
 #
 #      conda activate pygers-meg
-#      bash run_bids.sh /jukebox/<lab>/<study>/bids-config/subjects/sub-01.yaml
+#      bash run_bids-pipeline.sh /jukebox/<lab>/<study>/bids-config/subjects/sub-01.yaml
 #
 #  This checks the configuration, the raw data and the software right away (so mistakes
 #  show up in seconds, not after waiting in the queue), then submits a Slurm job with
-#  the time, memory and CPUs from the "slurm:" section of study.yaml. The job runs the
+#  the time, memory and CPUs from the "slurm:" section of global-study.yaml. The job runs the
 #  notebooks and writes the reports to <session>/reports/<date-time>/ (index.html first);
 #  the Slurm log is <session>/reports/slurm-<job id>.log.
 #
@@ -22,24 +22,24 @@
 #      --kernel NAME   the Jupyter kernel to run the notebooks in (default: python3, this
 #                      environment's Python)
 #
-#  "sbatch run_bids.sh <subject file>" also works: then the #SBATCH lines below set the
-#  job's resources instead of study.yaml, and the checks happen inside the job.
+#  "sbatch run_bids-pipeline.sh <subject file>" also works: then the #SBATCH lines below set the
+#  job's resources instead of global-study.yaml, and the checks happen inside the job.
 # =====================================================================================
 #
 #  HOW THIS SCRIPT WORKS
 #
 #  The same file is used twice:
-#    1. You run it on the login node ("bash run_bids.sh ..."). It checks everything,
+#    1. You run it on the login node ("bash run_bids-pipeline.sh ..."). It checks everything,
 #       then asks Slurm to run a job. The job is this same script, run again.
 #    2. Slurm runs it on a compute node. There, the variable SLURM_JOB_ID is set (Slurm
 #       sets it in every job), so the script knows it is inside the job and just starts
-#       the pipeline (pipeline/run_pipeline.py), which runs the notebooks.
+#       the pipeline (bids-pipeline/run_bids-pipeline.py), which runs the notebooks.
 #  The real work (the checks, choosing the notebooks, running them, the reports) is all in
-#  pipeline/run_pipeline.py. This script only handles the cluster side.
+#  bids-pipeline/run_bids-pipeline.py. This script only handles the cluster side.
 #
 #  The "#SBATCH" lines below are read by Slurm only, as default job settings (to bash
 #  they are comments). They are used only if you submit this file with sbatch yourself;
-#  normally the options from study.yaml, given on the sbatch command line, replace them.
+#  normally the options from global-study.yaml, given on the sbatch command line, replace them.
 #  Slurm reads #SBATCH lines only up to the first command, so they must stay up here.
 # =====================================================================================
 #SBATCH --job-name=bids
@@ -77,10 +77,10 @@ usage() {
 if [[ -n "${SLURM_JOB_ID:-}" ]]; then
 
     # Slurm runs a copy of this script from its own spool folder, so the script can't find
-    # pipeline/ next to itself. Find this script's real folder (01-explore-raw-files) in:
+    # bids-pipeline/ next to itself. Find this script's real folder (01-explore-raw-files) in:
     #   1. PYGERS_PIPELINE_DIR, which Part 2 below sets before submitting (the usual case);
     #   2. otherwise SLURM_SUBMIT_DIR, the folder sbatch was run from (when you ran
-    #      "sbatch run_bids.sh ..." yourself, from 01-explore-raw-files);
+    #      "sbatch run_bids-pipeline.sh ..." yourself, from 01-explore-raw-files);
     #   3. otherwise the current folder.
     # "${A:-${B:-C}}" means: A if it is set, else B if it is set, else C.
     HERE="${PYGERS_PIPELINE_DIR:-${SLURM_SUBMIT_DIR:-$PWD}}"
@@ -91,8 +91,8 @@ if [[ -n "${SLURM_JOB_ID:-}" ]]; then
     PY="${PYGERS_PYTHON:-$(command -v python)}"
 
     # Make sure the pipeline is really there ("-f" = "is an existing file"; "!" = "not").
-    if [[ ! -f "$HERE/pipeline/run_pipeline.py" ]]; then
-        echo "run_bids.sh: can't find pipeline/run_pipeline.py in $HERE; submit from pygers-meg's 01-explore-raw-files folder." >&2
+    if [[ ! -f "$HERE/bids-pipeline/run_bids-pipeline.py" ]]; then
+        echo "run_bids-pipeline.sh: can't find bids-pipeline/run_bids-pipeline.py in $HERE; submit from pygers-meg's 01-explore-raw-files folder." >&2
         exit 2
     fi
 
@@ -104,16 +104,16 @@ if [[ -n "${SLURM_JOB_ID:-}" ]]; then
     # them: the subject file and any --steps / --kernel). "exec" replaces this script with
     # the Python program, so the job's exit status is the pipeline's: 0 = all notebooks
     # ran, 1 = a notebook failed or was skipped, 2 = a problem found before running.
-    # Slurm uses that status for its FAIL email (slurm.mail_type in study.yaml).
-    exec "$PY" "$HERE/pipeline/run_pipeline.py" "$@"
+    # Slurm uses that status for its FAIL email (slurm.mail_type in global-study.yaml).
+    exec "$PY" "$HERE/bids-pipeline/run_bids-pipeline.py" "$@"
 fi
 
 
 # =====================================================================================
-#  PART 2: on the login node (you ran "bash run_bids.sh ..."): check, then submit
+#  PART 2: on the login node (you ran "bash run_bids-pipeline.sh ..."): check, then submit
 # =====================================================================================
 
-# This script's own folder (01-explore-raw-files, with pipeline/ in it), as a full path.
+# This script's own folder (01-explore-raw-files, with bids-pipeline/ in it), as a full path.
 # "${BASH_SOURCE[0]}" is the path used to start this script; "dirname" keeps only its
 # folder; "cd ... && pwd" turns that into a full path, whatever folder you are in.
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -130,7 +130,7 @@ SUBJECT_FILE="$(realpath "$1")"; shift
 
 # Go through the options one by one.
 #   CHECK_ONLY=1 for --check, LOCAL=1 for --local (both handled here, in this script).
-#   ARGS collects the options run_pipeline.py itself understands (--steps, --kernel), so
+#   ARGS collects the options run_bids-pipeline.py itself understands (--steps, --kernel), so
 #   they can be passed on unchanged.
 CHECK_ONLY=0; LOCAL=0; ARGS=()
 while [[ $# -gt 0 ]]; do                      # while there are arguments left
@@ -143,7 +143,7 @@ while [[ $# -gt 0 ]]; do                      # while there are arguments left
         # "--steps=04,05": option and value in one argument.
         --steps=*|--kernel=*) ARGS+=("$1") ;;
         -h|--help) usage ;;
-        *) echo "run_bids.sh: unknown option $1" >&2; usage ;;
+        *) echo "run_bids-pipeline.sh: unknown option $1" >&2; usage ;;
     esac
     shift                                     # move on to the next argument
 done
@@ -154,7 +154,7 @@ done
 # make sure it has the packages the pipeline needs. If not, say how to fix it and stop.
 PY="$(command -v python || true)"
 if [[ -z "$PY" ]] || ! "$PY" -c "import papermill, yaml, jsonschema" 2>/dev/null; then
-    echo "run_bids.sh: the pygers-meg environment isn't active (or lacks papermill)." >&2
+    echo "run_bids-pipeline.sh: the pygers-meg environment isn't active (or lacks papermill)." >&2
     echo "    conda activate pygers-meg" >&2
     exit 2
 fi
@@ -164,25 +164,25 @@ fi
 
 # ---- --local: run the pipeline right here, without Slurm ----
 # Only for an interactive compute session (e.g. from salloc), never on the login node:
-# the notebooks need a lot of memory and time. run_pipeline.py does its own checks first.
+# the notebooks need a lot of memory and time. run_bids-pipeline.py does its own checks first.
 if [[ $LOCAL -eq 1 ]]; then
-    exec "$PY" "$HERE/pipeline/run_pipeline.py" "$SUBJECT_FILE" ${ARGS[@]+"${ARGS[@]}"}
+    exec "$PY" "$HERE/bids-pipeline/run_bids-pipeline.py" "$SUBJECT_FILE" ${ARGS[@]+"${ARGS[@]}"}
 fi
 
 # ---- The pre-flight check, now, before waiting in the queue ----
-# run_pipeline.py --check checks the configuration, the raw data and the software, prints
+# run_bids-pipeline.py --check checks the configuration, the raw data and the software, prints
 # what it found, and runs nothing. If it finds a problem, it exits with status 2, and
 # "|| exit $?" stops this script with that same status, so nothing is submitted.
-"$PY" "$HERE/pipeline/run_pipeline.py" "$SUBJECT_FILE" ${ARGS[@]+"${ARGS[@]}"} --check || exit $?
+"$PY" "$HERE/bids-pipeline/run_bids-pipeline.py" "$SUBJECT_FILE" ${ARGS[@]+"${ARGS[@]}"} --check || exit $?
 
 # With --check, that was all: stop here, successfully.
 [[ $CHECK_ONLY -eq 1 ]] && exit 0
 
 # ---- Submit the job ----
-# Ask run_pipeline.py for the sbatch options built from study.yaml's "slurm:" section
+# Ask run_bids-pipeline.py for the sbatch options built from global-study.yaml's "slurm:" section
 # (job name, time, memory, CPUs, partition, email, and where the Slurm log goes). It
 # prints them on one line; "read -r -a" splits that line into the list SBATCH_OPTS.
-read -r -a SBATCH_OPTS <<< "$("$PY" "$HERE/pipeline/run_pipeline.py" "$SUBJECT_FILE" --slurm-options)"
+read -r -a SBATCH_OPTS <<< "$("$PY" "$HERE/bids-pipeline/run_bids-pipeline.py" "$SUBJECT_FILE" --slurm-options)"
 
 # Tell the job (Part 1) where the pipeline is and which Python to use. "export" passes
 # these variables on to the programs started from here, and "--export=ALL" below makes
@@ -193,4 +193,4 @@ export PYGERS_PIPELINE_DIR="$HERE" PYGERS_PYTHON="$PY"
 # Show what is submitted, then submit: this same script, with the subject file and the
 # options. sbatch prints "Submitted batch job <number>"; the job then waits in the queue.
 echo "Submitting: sbatch ${SBATCH_OPTS[*]}"
-sbatch --export=ALL "${SBATCH_OPTS[@]}" "$HERE/run_bids.sh" "$SUBJECT_FILE" ${ARGS[@]+"${ARGS[@]}"}
+sbatch --export=ALL "${SBATCH_OPTS[@]}" "$HERE/run_bids-pipeline.sh" "$SUBJECT_FILE" ${ARGS[@]+"${ARGS[@]}"}

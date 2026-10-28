@@ -6,7 +6,7 @@ The values here are for the sample auditory-oddball dataset; replace them with y
 study's.
 
 This README is for setting up and running a study. How the pipeline itself works (and how
-to change it) is in `01-explore-raw-files/pipeline/README.md` in the pygers-meg repository.
+to change it) is in `01-explore-raw-files/bids-pipeline/README.md` in the pygers-meg repository.
 
 ## Setting up a new study
 
@@ -19,7 +19,7 @@ Copy this whole `bids-config` folder next to your study's data, for example to
 
 | File | What's in it | How often |
 |---|---|---|
-| `study.yaml` | where the data are, your software (containers, edf2asc), what was recorded, what to run, options, job settings; at the end, the published dataset's description: name, authors, license, version history, participant columns | once per study (the description again for each release) |
+| `global-study.yaml` | where the data are, your software (containers, edf2asc), what was recorded, what to run, options, job settings; at the end, the published dataset's description: name, authors, license, version history, participant columns | once per study (the description again for each release) |
 | `processing.yaml` | how each notebook processes the data: events, MRI naming words, sync rules, behavioral columns | once per study |
 | `private.yaml` | DAYSBACK, the secret date shift (keep this file private) | once per study |
 | `text/` | README, task description, instructions, license text | once per study |
@@ -29,8 +29,8 @@ Every setting has a comment explaining it. Replace everything that says `EDIT ME
 contains `[yourpath]`.
 
 The Scully MEG lab's own settings (hardware, institution) are not in this folder: they
-are in `01-explore-raw-files/pipeline/facility.yaml` in the pygers-meg repository. To
-change one for your study only, set it under `facility_overrides:` in `study.yaml`.
+are in `01-explore-raw-files/bids-pipeline/facility.yaml` in the pygers-meg repository. To
+change one for your study only, set it under `facility_overrides:` in `global-study.yaml`.
 
 ### Step 3: Check your settings
 
@@ -46,13 +46,13 @@ There are two checks. Neither changes anything.
 
 | Command | What it checks | When to use it |
 |---|---|---|
-| `python pipeline/bids_config.py <subject file>` | the YAML files: misspelled or missing settings, leftover `EDIT ME`, settings that disagree; and that the .edf and DICOMs can be found | while you edit (quick) |
-| `bash run_bids.sh <subject file> --check` | all of that, plus everything a real run needs: the raw recordings, your containers and software, and which notebooks would run | before you submit |
+| `python bids-pipeline/bids_config.py <subject file>` | the YAML files: misspelled or missing settings, leftover `EDIT ME`, settings that disagree; and that the .edf and DICOMs can be found | while you edit (quick) |
+| `bash run_bids-pipeline.sh <subject file> --check` | all of that, plus everything a real run needs: the raw recordings, your containers and software, and which notebooks would run | before you submit |
 
 For example:
 
 ```bash
-python pipeline/bids_config.py /jukebox/<lab>/<study>/bids-config/subjects/sub-01.yaml
+python bids-pipeline/bids_config.py /jukebox/<lab>/<study>/bids-config/subjects/sub-01.yaml
 ```
 
 Each check lists every problem it finds, or says everything is complete. Adding
@@ -64,7 +64,7 @@ notebook) would receive.
 From the same place:
 
 ```bash
-bash run_bids.sh /jukebox/<lab>/<study>/bids-config/subjects/sub-01.yaml
+bash run_bids-pipeline.sh /jukebox/<lab>/<study>/bids-config/subjects/sub-01.yaml
 ```
 
 This runs the full check again and, if it passes, submits a Slurm job. When the job is
@@ -77,7 +77,7 @@ To run only notebook 01 (for example to choose the bad channels first, see below
 
 BIDS allows datasets without session labels: `sub-01/meg/sub-01_task-..._meg.fif` instead
 of `sub-01/ses-01/meg/sub-01_ses-01_task-..._meg.fif`. For such a study set
-`study.sessions: false` in `study.yaml` and `session: null` in every subject file; the raw
+`study.sessions: false` in `global-study.yaml` and `session: null` in every subject file; the raw
 data then go in `sourcedata/sub-01/raw/` (no `ses-01/` level). Choose this only if every
 participant comes once: adding sessions later means renaming every file already in `bids/`
 and `sourcedata/`.
@@ -86,11 +86,11 @@ and `sourcedata/`.
 
 These texts can contain placeholders, filled in by notebook 04 when it runs:
 `text/README.md`, `text/LICENSE.txt`, `facility.yaml`'s `software_versions` and
-`emptyroom_description`, and the lines of `changes` in `study.yaml`.
+`emptyroom_description`, and the lines of `changes` in `global-study.yaml`.
 
 | Placeholder | Becomes |
 |---|---|
-| `{ds_name}` | the dataset name (`study.yaml`, `description.name`) |
+| `{ds_name}` | the dataset name (`global-study.yaml`, `description.name`) |
 | `{task}` | the task label |
 | `{event_codes}` | the event names and codes, e.g. `standard = 1, deviant = 2` |
 | `{n_meg_channels}`, `{n_ref_channels}` | the number of MEG and reference channels in the recording |
@@ -98,11 +98,11 @@ These texts can contain placeholders, filled in by notebook 04 when it runs:
 | `{emptyroom_layout}` | `same-session` or `sub-emptyroom` |
 | `{cmeg2fif_version}` | the cMEG2FIF version, from the conversion log |
 | `{mne_version}`, `{mne_bids_version}` | the MNE and MNE-BIDS versions used |
-| `{license}` | the license name (`study.yaml`, `description.license`) |
+| `{license}` | the license name (`global-study.yaml`, `description.license`) |
 | `{anonymization_note}` | a sentence on how the data were anonymized (empty if not anonymized) |
 
 ## Bad channels
 
-Run notebook 01 first (`bash run_bids.sh <subject file> --steps 01`) and look at its report: the
+Run notebook 01 first (`bash run_bids-pipeline.sh <subject file> --steps 01`) and look at its report: the
 candidate table and the spectra. Then set `bad_channels` in the subject file: a list,
 `auto` (notebook 01's candidates), or `auto` with `add`/`keep` changes.

@@ -1,8 +1,8 @@
 """Checks the pipeline's step rules and pre-flight checks (no notebooks are run).
 
 Run either way (in the pygers-meg environment, from pygers-meg's 01-explore-raw-files folder):
-    python pipeline/tests/test_run_pipeline.py
-    python -m pytest pipeline/tests
+    python bids-pipeline/tests/test_run_pipeline.py
+    python -m pytest bids-pipeline/tests
 
 Uses the same fake study as test_bids_config.py (filled_config()), in a temporary folder.
 
@@ -15,7 +15,7 @@ The tests (see tests/README.md for more):
                                          check and says which notebook to add
   test_paths_without_sessions            no "ses-" in the runner's paths or job name
   test_steps_option                      "4,5" -> 04, 05; "07" is rejected
-  test_slurm_options                     sbatch options from study.yaml, incl. optional email
+  test_slurm_options                     sbatch options from global-study.yaml, incl. optional email
   test_lock_is_exclusive_and_released    only one job at a time holds the BIDS dataset lock
 """
 from __future__ import annotations
@@ -27,7 +27,13 @@ HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE.parent))
 sys.path.insert(0, str(HERE))
 import bids_config as bc  # noqa: E402
-import run_pipeline as rp  # noqa: E402
+# run_bids-pipeline.py has a "-" in its name, so it can't be loaded with a plain "import";
+# load it from its file instead, under the name run_bids_pipeline.
+import importlib.util  # noqa: E402
+_spec = importlib.util.spec_from_file_location("run_bids_pipeline", HERE.parent / "run_bids-pipeline.py")
+rp = importlib.util.module_from_spec(_spec)
+sys.modules["run_bids_pipeline"] = rp
+_spec.loader.exec_module(rp)
 from test_bids_config import filled_config  # noqa: E402
 
 

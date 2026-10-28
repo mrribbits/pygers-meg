@@ -4,19 +4,19 @@
 #
 #  Make one file per subject and session (copy this one, e.g. to sub-02.yaml), then run
 #  (from pygers-meg's 01-explore-raw-files folder):
-#      bash run_bids.sh /jukebox/<lab>/<study>/bids-config/subjects/sub-01.yaml
+#      bash run_bids-pipeline.sh /jukebox/<lab>/<study>/bids-config/subjects/sub-01.yaml
 #
 #  Everything else (where the data are, what to run, how to process) comes from
-#  ../study.yaml and the files it points to.
+#  ../global-study.yaml and the files it points to.
 # =====================================================================================
 
 # The study settings this session belongs to (relative to this file).
-study_config: "../study.yaml"
+study_config: "../global-study.yaml"
 
 # The BIDS labels: letters and digits only, in quotes. The raw data must be in
 #   <sourcedata_root>/sub-<subject>/ses-<session>/raw/
 # The MRI uses the same session label as the MEG.
-# In a study without sessions (sessions: false, in the study: section of study.yaml), write
+# In a study without sessions (sessions: false, in the study: section of global-study.yaml), write
 #   session: null
 # and the raw data are in  <sourcedata_root>/sub-<subject>/raw/
 subject: "01"
@@ -72,7 +72,7 @@ bad_reasons: {}
 # -------------------------------------------------------------------------------------
 #  The participant (participants.tsv)
 # -------------------------------------------------------------------------------------
-#  One value per column; every column must be described in study.yaml
+#  One value per column; every column must be described in global-study.yaml
 #  (participants_columns). participant_id is added for you. Use "n/a" for unknown.
 participant:
   age: 30

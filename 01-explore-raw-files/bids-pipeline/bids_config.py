@@ -3,7 +3,7 @@
 A study's settings are spread over several YAML files (see templates/bids-config/):
 
     subjects/sub-01.yaml   one session: labels, recording names, bad channels, participant
-    study.yaml             where the data are, what to run, options, job settings, and
+    global-study.yaml      where the data are, what to run, options, job settings, and
                            (at the end) the published dataset's description
     processing.yaml        how each notebook processes the data
     private.yaml           DAYSBACK, the secret date shift
@@ -17,8 +17,8 @@ into the exact settings each notebook asks for with from_config(), e.g. "EVENT_I
 Check a configuration from the command line (on scotty, in the pygers-meg environment, from
 pygers-meg's 01-explore-raw-files folder):
 
-    python pipeline/bids_config.py /path/to/bids-config/subjects/sub-01.yaml
-    python pipeline/bids_config.py /path/to/bids-config/subjects/sub-01.yaml --show 04
+    python bids-pipeline/bids_config.py /path/to/bids-config/subjects/sub-01.yaml
+    python bids-pipeline/bids_config.py /path/to/bids-config/subjects/sub-01.yaml --show 04
 
 The first form lists every problem it finds (or says the configuration is complete);
 --show NN also prints the settings notebook NN would receive.
@@ -50,7 +50,7 @@ TEXT_FILES = {
     "license": "LICENSE.txt",
 }
 
-# The sections at the end of study.yaml that describe the published dataset. load() keeps
+# The sections at the end of global-study.yaml that describe the published dataset. load() keeps
 # them apart from the other study settings, in Config.dataset.
 DATASET_KEYS = ("description", "citation", "changes", "participants_columns", "task_sidecar")
 
@@ -167,12 +167,12 @@ def load(subject_file) -> Config:
     subject_file = Path(subject_file).expanduser().resolve()
     subject = _read_yaml(subject_file, "Subject file")
     if "study_config" not in subject:
-        raise ConfigError(f"{subject_file}: no study_config (the path of study.yaml, e.g. \"../study.yaml\").")
+        raise ConfigError(f"{subject_file}: no study_config (the path of global-study.yaml, e.g. \"../global-study.yaml\").")
     study_file = (subject_file.parent / subject["study_config"]).resolve()
     study = _read_yaml(study_file, "Study file (study_config)")
 
     files_section = study.get("files") or {}
-    # The published dataset's description: the last sections of study.yaml
+    # The published dataset's description: the last sections of global-study.yaml
     dataset = {k: study[k] for k in DATASET_KEYS if k in study}
     study = {k: v for k, v in study.items() if k not in DATASET_KEYS}
     config_dir = study_file.parent
@@ -240,7 +240,7 @@ def _schema_problems(cfg: Config) -> list:
         if label == "processing" and cfg.subject.get("overrides"):
             file += " (+ the subject file's overrides)"
         if label == "facility" and cfg.study.get("facility_overrides"):
-            file += " (+ study.yaml's facility_overrides)"
+            file += " (+ global-study.yaml's facility_overrides)"
         for err in sorted(validator.iter_errors(data), key=lambda e: list(e.absolute_path)):
             msg = err.message
             if err.validator == "additionalProperties":
@@ -267,8 +267,8 @@ def _walk(value, where=""):
 
 def _placeholder_problems(cfg: Config) -> list:
     problems = []
-    parts = [("study.yaml", cfg.study), (cfg.subject_file.name, cfg.subject),
-             ("processing.yaml", cfg.processing), ("study.yaml", cfg.dataset),
+    parts = [("global-study.yaml", cfg.study), (cfg.subject_file.name, cfg.subject),
+             ("processing.yaml", cfg.processing), ("global-study.yaml", cfg.dataset),
              ("facility.yaml", cfg.facility)]
     for file, data in parts:
         for where, text in _walk(data):
@@ -315,10 +315,10 @@ def _cross_problems(cfg: Config) -> list:
     # Sessions: every subject file follows the study's choice
     sessions, ses = cfg.study.get("study", {}).get("sessions"), cfg.subject.get("session")
     if sessions is True and not ses:
-        p.append(f"{cfg.subject_file.name}: session is empty, but study.yaml says the study has sessions "
+        p.append(f"{cfg.subject_file.name}: session is empty, but global-study.yaml says the study has sessions "
                  "(study.sessions: true); give the session label, e.g. \"01\"")
     if sessions is False and ses:
-        p.append(f"{cfg.subject_file.name}: session is {ses!r}, but study.yaml says the study has no sessions "
+        p.append(f"{cfg.subject_file.name}: session is {ses!r}, but global-study.yaml says the study has no sessions "
                  "(study.sessions: false); set session: null")
 
     # Software: the MRI containers are needed when the study has MRI
@@ -326,7 +326,7 @@ def _cross_problems(cfg: Config) -> list:
     if cfg.study.get("data", {}).get("mri"):
         for name in ("heudiconv_sif", "pydeface_sif"):
             if name in sw and not sw[name]:
-                p.append(f"study.yaml: software.{name} is needed because data.mri is true")
+                p.append(f"global-study.yaml: software.{name} is needed because data.mri is true")
 
     # Sync: the MEG event names it refers to exist
     sync = cfg.processing.get("eye_sync", {})
@@ -352,7 +352,7 @@ def _cross_problems(cfg: Config) -> list:
     undescribed = sorted(cols - set(cfg.dataset.get("participants_columns", {})))
     if undescribed:
         p.append(f"{cfg.subject_file.name}: participant has column(s) {undescribed}; describe them in "
-                 "study.yaml (participants_columns)")
+                 "global-study.yaml (participants_columns)")
 
     # Bad channels: add and keep don't overlap
     bad = cfg.subject.get("bad_channels")
@@ -365,7 +365,7 @@ def _cross_problems(cfg: Config) -> list:
     for i, entry in enumerate(cfg.dataset.get("changes") or []):
         d = str(entry.get("date", ""))
         if not any(m in d for m in PLACEHOLDER_MARKS) and not re.fullmatch(r"\d{4}-\d{2}-\d{2}", d):
-            p.append(f"study.yaml: changes[{i}].date should look like 2026-11-01, not {d!r}")
+            p.append(f"global-study.yaml: changes[{i}].date should look like 2026-11-01, not {d!r}")
 
     # Anonymization needs a fixed DAYSBACK
     if cfg.processing.get("anonymization", {}).get("anonymize", True) and not isinstance(cfg.private.get("daysback"), int):
@@ -376,10 +376,10 @@ def _cross_problems(cfg: Config) -> list:
     try:
         src, bids = cfg.sourcedata_root.resolve(), cfg.bids_root.resolve()
         if src == bids or bids in src.parents:
-            p.append("study.yaml: paths.sourcedata_root is inside paths.bids_root; keep them side by side "
+            p.append("global-study.yaml: paths.sourcedata_root is inside paths.bids_root; keep them side by side "
                      "(sourcedata holds identifying data, bids/ only anonymized data)")
         elif src in bids.parents:
-            p.append("study.yaml: paths.bids_root is inside paths.sourcedata_root; keep them side by side")
+            p.append("global-study.yaml: paths.bids_root is inside paths.sourcedata_root; keep them side by side")
     except (KeyError, TypeError):
         pass
 
@@ -394,7 +394,7 @@ def _cross_problems(cfg: Config) -> list:
     texts["facility.yaml: meg.emptyroom_description"] = cfg.facility.get("meg", {}).get("emptyroom_description", "")
     for i, entry in enumerate(cfg.dataset.get("changes") or []):
         for j, item in enumerate(entry.get("items", [])):
-            texts[f"study.yaml: changes[{i}].items[{j}]"] = item
+            texts[f"global-study.yaml: changes[{i}].items[{j}]"] = item
     for where, t in texts.items():
         unknown = _unknown_placeholders(t or "")
         if unknown:
@@ -436,7 +436,7 @@ def find_inputs(cfg: Config) -> dict:
         eye_dir = cfg.raw_dir / "eye"
         name = cfg.subject["eye"]["edf_file"]
         if not eye_dir.is_dir():
-            problems.append(f"No eye/ folder in {cfg.raw_dir} (or set data.eye_tracking: false in study.yaml)")
+            problems.append(f"No eye/ folder in {cfg.raw_dir} (or set data.eye_tracking: false in global-study.yaml)")
         elif name == "auto":
             edfs = sorted(p for p in eye_dir.iterdir() if p.suffix.lower() == ".edf")
             if len(edfs) == 1:
@@ -456,7 +456,7 @@ def find_inputs(cfg: Config) -> dict:
         rel = "sub-{subject}/" + ("ses-{session}/" if cfg.session else "") + "raw/mri"
         pattern = cfg.processing["mri_conversion"]["dicom_files"]
         if not mri_dir.is_dir():
-            problems.append(f"No mri/ folder in {cfg.raw_dir} (or set data.mri: false in study.yaml)")
+            problems.append(f"No mri/ folder in {cfg.raw_dir} (or set data.mri: false in global-study.yaml)")
         elif pattern == "auto":
             for sub in ["", "dcm/"]:
                 folder = mri_dir / sub

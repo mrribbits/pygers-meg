@@ -1,7 +1,7 @@
-# pipeline/tests/
+# bids-pipeline/tests/
 
 Automatic checks for the Pygers-MEG-to-BIDS pipeline's own code. Run them after you change
-a notebook, the bids-config template or anything in `pipeline/`, so mistakes show up here
+a notebook, the bids-config template or anything in `bids-pipeline/`, so mistakes show up here
 in seconds instead of in a cluster job.
 
 They never run a notebook, touch real data, or need Slurm, MNE or the containers: each test
@@ -13,11 +13,11 @@ in a temporary folder and checks what the pipeline makes of it.
 In the `pygers-meg` environment, from pygers-meg's `01-explore-raw-files` folder:
 
 ```bash
-python pipeline/tests/test_bids_config.py
-python pipeline/tests/test_run_pipeline.py
+python bids-pipeline/tests/test_bids_config.py
+python bids-pipeline/tests/test_run_pipeline.py
 ```
 
-Each test prints `PASS`, or `FAIL` and what went wrong. (`python -m pytest pipeline/tests`
+Each test prints `PASS`, or `FAIL` and what went wrong. (`python -m pytest bids-pipeline/tests`
 also works, if pytest is installed.)
 
 ## test_bids_config.py: the notebooks, the template and bids_config.py agree
@@ -42,11 +42,11 @@ also works, if pytest is installed.)
 | `test_inputs_from_notebooks_that_dont_run_must_exist` | `--steps 04` with no FIF files from 01 (and no files from 02, 03) stops the pre-flight check, which says which notebook to add. |
 | `test_paths_without_sessions` | The files the runner checks between notebooks, and the Slurm job name, have no `ses-` in a study without sessions. |
 | `test_steps_option` | `--steps 4,5` becomes 04, 05; `07` is rejected. |
-| `test_slurm_options` | The sbatch options come from `study.yaml` (time, memory, CPUs, partition), and the email options only when `mail_user` is set; bad email settings are reported. |
+| `test_slurm_options` | The sbatch options come from `global-study.yaml` (time, memory, CPUs, partition), and the email options only when `mail_user` is set; bad email settings are reported. |
 | `test_lock_is_exclusive_and_released` | While one job holds the lock on the BIDS dataset, a second can't take it; once released, it can. |
 
 ## When a test fails
 
 The message says what differs. Most often a notebook setting was added, renamed or removed
 without updating `bids_config.notebook_settings()`, the schema and the template: see "When
-you change a notebook" in `pipeline/README.md`.
+you change a notebook" in `bids-pipeline/README.md`.

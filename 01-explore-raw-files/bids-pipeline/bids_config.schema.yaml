@@ -11,11 +11,11 @@
 #
 #  This file lists, for every configuration file, which settings exist, which are
 #  required, and what kind of value each one takes. bids_config.py checks the files
-#  against these rules first, every time (python pipeline/bids_config.py ..., and the
-#  pre-flight check of run_bids.sh), and lists every broken rule, e.g.
+#  against these rules first, every time (python bids-pipeline/bids_config.py ..., and the
+#  pre-flight check of run_bids-pipeline.sh), and lists every broken rule, e.g.
 #
 #      processing.yaml: eye_conversion: Unknown setting(s), misspelled? ('keep_wrok' was unexpected)
-#      study.yaml: options.overwrite: 'maybe' should be true or false
+#      global-study.yaml: options.overwrite: 'maybe' should be true or false
 #      sub-01.yaml: subject: 'sub-01': use letters and digits only (no '-', '_' or spaces)
 #
 #  WHAT IT DOESN'T CHECK
@@ -45,17 +45,17 @@
 #
 #  THE SECTIONS (under $defs)
 #    small building blocks   label, path, ... reused by the sections below
-#    study                   study.yaml (without its last part, the dataset description)
+#    study                   global-study.yaml (without its last part, the dataset description)
 #    subject                 subjects/sub-XX.yaml
 #    processing              processing.yaml, after the subject file's overrides are applied
-#    dataset                 the last part of study.yaml: the published dataset's description
+#    dataset                 the last part of global-study.yaml: the published dataset's description
 #    private                 private.yaml
-#    facility                facility.yaml, after study.yaml's facility_overrides are applied
+#    facility                facility.yaml, after global-study.yaml's facility_overrides are applied
 #
 #  WHEN TO EDIT IT
 #  When a setting is added, renamed or removed (see "When you change a notebook" in
-#  pipeline/README.md): add it here under the right section, with its type, and in
-#  "required" if every study must set it. The tests (pipeline/tests/) then check that the
+#  bids-pipeline/README.md): add it here under the right section, with its type, and in
+#  "required" if every study must set it. The tests (bids-pipeline/tests/) then check that the
 #  template still follows these rules.
 # =====================================================================================
 
@@ -80,7 +80,7 @@ $defs:
     additionalProperties: true
 
   # =====================================================================================
-  # study.yaml (its last part, the dataset description, is checked by "dataset" below)
+  # global-study.yaml (its last part, the dataset description, is checked by "dataset" below)
   study:
     type: object
     additionalProperties: false
@@ -362,7 +362,7 @@ $defs:
               count_blinks_starting_before: {type: boolean}
 
   # =====================================================================================
-  # The published dataset's description: the last sections of study.yaml (bids_config.load
+  # The published dataset's description: the last sections of global-study.yaml (bids_config.load
   # separates them from the other study settings before checking)
   dataset:
     type: object
@@ -452,7 +452,7 @@ $defs:
       daysback: {anyOf: [{type: integer, minimum: 1}, {type: "null"}]}
 
   # =====================================================================================
-  # facility.yaml, with study.yaml's facility_overrides already applied
+  # facility.yaml, with global-study.yaml's facility_overrides already applied
   facility:
     type: object
     additionalProperties: false

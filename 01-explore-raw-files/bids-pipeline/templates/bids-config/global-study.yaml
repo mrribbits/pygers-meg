@@ -1,24 +1,25 @@
 # =====================================================================================
-#  study.yaml: settings for the whole study (set once)
+#  global-study.yaml: settings for the whole study (set once)
 # =====================================================================================
 #
 #  This folder (bids-config/) holds everything the pipeline needs to know about your
 #  study. You never edit the notebooks: the pipeline reads these files and passes the
 #  settings to each notebook.
 #
-#    study.yaml        this file: where the data are, what to run, job settings, and
-#                      (at the end) the published dataset's description
-#    processing.yaml   how each notebook processes the data (events, MRI rules, sync, ...)
-#    private.yaml      DAYSBACK, the secret date shift. Keep this file private.
-#    text/             long texts: README, task description, instructions, license
-#    subjects/         one file per subject/session: labels, recording names, bad channels
+#    global-study.yaml   this file: where the data are, what to run, job settings, and
+#                        (at the end) the published dataset's description
+#    processing.yaml     how each notebook processes the data (events, MRI rules, sync, ...)
+#    private.yaml        DAYSBACK, the secret date shift. Keep this file private.
+#    text/               long texts: README, task description, instructions, license
+#    subjects/           one file per subject/session: labels, recording names, bad channels
 #
-#  To run one subject (on scotty, in the pygers-meg environment, from pygers-meg's 01-explore-raw-files folder):
-#      bash run_bids.sh /jukebox/<lab>/<study>/bids-config/subjects/sub-01.yaml
+#  To run one subject (on scotty, in the pygers-meg environment, from pygers-meg's
+#  01-explore-raw-files folder):
+#      bash run_bids-pipeline.sh /jukebox/<lab>/<study>/bids-config/subjects/sub-01.yaml
 #
 #  The Scully MEG lab's own settings (hardware, institution) are in
-#  01-explore-raw-files/pipeline/facility.yaml in the pygers-meg repository. Change any of them for this
-#  study under facility_overrides: at the end of this file.
+#  01-explore-raw-files/bids-pipeline/facility.yaml in the pygers-meg repository. Change any
+#  of them for this study under facility_overrides: near the end of this file.
 #
 #  Values written as "EDIT ME" must be replaced: the pipeline refuses to run while any
 #  setting still says "EDIT ME" or contains "[yourpath]".
@@ -159,7 +160,7 @@ report:
 
 
 # -------------------------------------------------------------------------------------
-#  The cluster job (used by run_bids.sh)
+#  The cluster job (used by run_bids-pipeline.sh)
 # -------------------------------------------------------------------------------------
 slurm:
   time: "04:00:00"          # maximum run time (hh:mm:ss)
@@ -172,7 +173,7 @@ slurm:
   #   BEGIN (the job starts running), END (it finished), FAIL (it ended with an error:
   #   a notebook failed or was skipped), TIME_LIMIT_80 (80% of the
   #   time used), ALL. Slurm sends no email when the job is only submitted (queued);
-  #   run_bids.sh prints the job number then.
+  #   run_bids-pipeline.sh prints the job number then.
   mail_user: null           # e.g. "netid@princeton.edu"
   mail_type: ["END", "FAIL"]
 
@@ -180,7 +181,7 @@ slurm:
 # -------------------------------------------------------------------------------------
 #  The other configuration files (relative to this folder)
 # -------------------------------------------------------------------------------------
-#  facility: null = 01-explore-raw-files/pipeline/facility.yaml in pygers-meg (Recommended).
+#  facility: null = 01-explore-raw-files/bids-pipeline/facility.yaml in pygers-meg (Recommended).
 files:
   processing: "processing.yaml"
   private: "private.yaml"
@@ -191,7 +192,7 @@ files:
 # -------------------------------------------------------------------------------------
 #  Changes to the facility settings for this study only
 # -------------------------------------------------------------------------------------
-#  Same names and layout as 01-explore-raw-files/pipeline/facility.yaml; only what you set here changes.
+#  Same names and layout as 01-explore-raw-files/bids-pipeline/facility.yaml; only what you set here changes.
 #  Example:
 #    facility_overrides:
 #      meg:

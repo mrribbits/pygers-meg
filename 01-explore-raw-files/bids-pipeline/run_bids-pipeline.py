@@ -1,17 +1,17 @@
 """Run the Pygers-MEG-to-BIDS notebooks for one subject/session, with HTML reports.
 
-Normally started by run_bids.sh (which submits it to Slurm), but it also runs on its own,
+Normally started by run_bids-pipeline.sh (which submits it to Slurm), but it also runs on its own,
 in the pygers-meg environment, from pygers-meg's 01-explore-raw-files folder:
 
-    python pipeline/run_pipeline.py /path/to/bids-config/subjects/sub-01.yaml
-    python pipeline/run_pipeline.py .../sub-01.yaml --steps 04,05   # only these (plus the rules below)
-    python pipeline/run_pipeline.py .../sub-01.yaml --check         # check everything, run nothing
+    python bids-pipeline/run_bids-pipeline.py /path/to/bids-config/subjects/sub-01.yaml
+    python bids-pipeline/run_bids-pipeline.py .../sub-01.yaml --steps 04,05   # only these (plus the rules below)
+    python bids-pipeline/run_bids-pipeline.py .../sub-01.yaml --check         # check everything, run nothing
 
 What it does:
   1. Reads and checks the configuration (bids_config.py), finds the raw files, and checks
      that the software each chosen notebook needs is there and starts (pre-flight). Any
      problem stops it here, before anything is changed, with the full list.
-  2. Decides which notebooks run: those turned on under "steps:" in study.yaml (or given
+  2. Decides which notebooks run: those turned on under "steps:" in global-study.yaml (or given
      with --steps), minus those whose data the study doesn't have. If 04 runs, 05 runs too
      (04 rewrites a file 05 completes), and 06 (the validation) always runs last.
   3. Runs each notebook with papermill. Each one reads its settings from one settings file
@@ -66,10 +66,10 @@ from pathlib import Path                   # file paths that work on macOS, Linu
 # =====================================================================================
 
 # Where things are, worked out from where this file is:
-#   <pygers-meg>/01-explore-raw-files/pipeline/run_pipeline.py
+#   <pygers-meg>/01-explore-raw-files/bids-pipeline/run_bids-pipeline.py
 # __file__ is this file's path; .resolve() makes it a full path; .parent is its folder.
 PIPELINE_DIR = Path(__file__).resolve().parent
-NOTEBOOKS_DIR = PIPELINE_DIR.parent        # the notebooks are in the folder above pipeline/
+NOTEBOOKS_DIR = PIPELINE_DIR.parent        # the notebooks are in the folder above bids-pipeline/
 REPO_DIR = NOTEBOOKS_DIR.parent             # the pygers-meg repository (for its git version)
 
 # bids_config.py (next to this file) reads and checks the YAML files. Tell Python to look
@@ -91,7 +91,7 @@ STEP_NAMES = {
     "05": "Sync the eye tracking to the MEG and add it to the BIDS dataset",
     "06": "Validate the whole BIDS dataset",
 }
-# The study.yaml "data:" switch a notebook needs (notebooks not listed always can run).
+# The global-study.yaml "data:" switch a notebook needs (notebooks not listed always can run).
 # E.g. with "data: eye_tracking: false", notebooks 02 and 05 are skipped.
 STEP_DATA = {"02": "eye_tracking", "03": "mri", "05": "eye_tracking"}
 # Notebooks that write into (or read the whole of) the BIDS dataset or the shared
@@ -232,14 +232,14 @@ def find_notebooks(folder: Path = NOTEBOOKS_DIR) -> dict:
 def plan_steps(cfg: bc.Config, chosen: list | None = None) -> dict:
     """{"01": Step, ...} for every notebook, each "planned" or "skipped" with the reason.
 
-    chosen: the notebooks given with --steps, or None to use "steps:" in study.yaml.
+    chosen: the notebooks given with --steps, or None to use "steps:" in global-study.yaml.
     The rules, in this order: not chosen -> skipped; 04 chosen -> 05 added; 06 always
     added; the study has no data for it -> skipped (this one wins over the others)."""
     data = cfg.study["data"]
     if chosen is None:
-        # Every notebook set to true under "steps:" in study.yaml
+        # Every notebook set to true under "steps:" in global-study.yaml
         wanted = {k for k, on in cfg.study["steps"].items() if on}
-        source = "steps: in study.yaml"
+        source = "steps: in global-study.yaml"
     else:
         wanted = set(chosen)
         source = "--steps"
@@ -317,15 +317,15 @@ def requirements(cfg: bc.Config, settings: dict) -> dict:
 # (what was found, shown so you can see it looked at the right files).
 
 def _container_problems(name: str, sif, runtime: str | None) -> list:
-    """Problems with one container from study.yaml's "software:" section (empty list = fine).
+    """Problems with one container from global-study.yaml's "software:" section (empty list = fine).
 
     name: the setting's name, e.g. "heudiconv_sif"; sif: its value (the .sif file);
     runtime: the apptainer (or singularity) program, or None if there is none."""
     if not sif:
-        return [f"study.yaml: software.{name} is not set"]
+        return [f"global-study.yaml: software.{name} is not set"]
     sif = Path(sif)
     if not sif.is_file():
-        return [f"study.yaml: software.{name}: {sif} not found"]
+        return [f"global-study.yaml: software.{name}: {sif} not found"]
     if runtime is None:
         return []   # reported once, separately
     # Start the container and run "true" (a program that does nothing) inside it. This
@@ -333,7 +333,7 @@ def _container_problems(name: str, sif, runtime: str | None) -> list:
     # --cleanenv: don't pass your environment into the container (as the notebooks do).
     code, out = _run([runtime, "exec", "--cleanenv", sif, "true"])
     if code != 0:
-        return [f"study.yaml: software.{name}: {sif} doesn't start with {runtime} (exit code {code}): {out[-300:]}"]
+        return [f"global-study.yaml: software.{name}: {sif} doesn't start with {runtime} (exit code {code}): {out[-300:]}"]
     return []
 
 
@@ -422,15 +422,15 @@ def preflight(cfg: bc.Config, steps: dict, settings: dict, kernel: str) -> tuple
     # ---- notebook 02: the EDF (found by bids_config.find_inputs) and edf2asc ----
     if "02" in run:
         facts.append(f"EyeLink file: {Path(settings['02']['EDF_FILE']).name}")
-        # edf2asc (SR Research's EDF reader, used by eye2bids): in the folder study.yaml
+        # edf2asc (SR Research's EDF reader, used by eye2bids): in the folder global-study.yaml
         # names, or on the PATH. os.X_OK = "can be run as a program".
         if sw["edf2asc_dir"]:
             exe = Path(sw["edf2asc_dir"]) / "edf2asc"
             if not (exe.is_file() and os.access(exe, os.X_OK)):
-                problems.append(f"study.yaml: software.edf2asc_dir: no edf2asc program in {sw['edf2asc_dir']}")
+                problems.append(f"global-study.yaml: software.edf2asc_dir: no edf2asc program in {sw['edf2asc_dir']}")
         elif shutil.which("edf2asc") is None:
             problems.append("edf2asc is not on your PATH; install it (install_edf2asc.sh) or set "
-                            "software.edf2asc_dir in study.yaml")
+                            "software.edf2asc_dir in global-study.yaml")
 
     # ---- notebooks 03 and 06: the containers ----
     if run & {"03", "06"}:
@@ -458,7 +458,7 @@ def preflight(cfg: bc.Config, steps: dict, settings: dict, kernel: str) -> tuple
             facts.append(f"Behavioral logs: {[p.name for p in csvs]}")
         else:
             problems.append(f"No *task-{task}_*.csv files in {behav} "
-                            "(or set data.behavioral: false in study.yaml)")
+                            "(or set data.behavioral: false in global-study.yaml)")
 
     # ---- what the chosen notebooks need from notebooks that don't run now ----
     # E.g. "--steps 04": 01 won't run, so its FIF files must already be there.
@@ -822,7 +822,7 @@ def _parse_steps(text: str) -> list:
 
 
 def slurm_options(cfg: bc.Config) -> list:
-    """The sbatch options from study.yaml's "slurm:" section (used by run_bids.sh)."""
+    """The sbatch options from global-study.yaml's "slurm:" section (used by run_bids-pipeline.sh)."""
     sl = cfg.study["slurm"]
     # The Slurm log goes into the session's reports/ folder, which must exist before
     # submitting (Slurm can't create it). %j is replaced by Slurm with the job number.
@@ -833,7 +833,7 @@ def slurm_options(cfg: bc.Config) -> list:
             f"--output={reports / 'slurm-%j.log'}"]
     if sl["partition"]:
         opts.append(f"--partition={sl['partition']}")
-    # Email notices (optional settings, so older study.yaml files without them still work)
+    # Email notices (optional settings, so older global-study.yaml files without them still work)
     if sl.get("mail_user"):
         opts += [f"--mail-user={sl['mail_user']}", f"--mail-type={','.join(sl.get('mail_type') or ['END', 'FAIL'])}"]
     return opts
@@ -919,31 +919,31 @@ def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description="Run the Pygers-MEG-to-BIDS notebooks for one subject/session.")
     parser.add_argument("subject_file", help="e.g. /jukebox/<lab>/<study>/bids-config/subjects/sub-01.yaml")
     parser.add_argument("--steps", type=_parse_steps,
-                        help="the notebooks to run, e.g. 04,05 (instead of steps: in study.yaml)")
+                        help="the notebooks to run, e.g. 04,05 (instead of steps: in global-study.yaml)")
     parser.add_argument("--check", action="store_true", help="only check the configuration, data and software")
     parser.add_argument("--kernel", default="python3",
                         help="the Jupyter kernel the notebooks run in (default python3: this environment's)")
     parser.add_argument("--notebooks", type=Path, default=NOTEBOOKS_DIR,
                         help=f"the folder with the notebooks (default {NOTEBOOKS_DIR})")
     parser.add_argument("--slurm-options", action="store_true",
-                        help="print the sbatch options from study.yaml and stop (used by run_bids.sh)")
+                        help="print the sbatch options from global-study.yaml and stop (used by run_bids-pipeline.sh)")
     args = parser.parse_args(argv)
     _setup_logging()                          # messages to the screen for now
 
     # ---- 2. Read the configuration ----
-    # bc.load reads the subject file and every file it leads to (study.yaml, ...). A
+    # bc.load reads the subject file and every file it leads to (global-study.yaml, ...). A
     # missing file or broken YAML stops here.
     try:
         cfg = bc.load(args.subject_file)
     except bc.ConfigError as err:
         log.error("Could not read the configuration:\n  " + "\n  ".join(err.problems))
         return 2
-    # --slurm-options (asked for by run_bids.sh): print the sbatch options and stop
+    # --slurm-options (asked for by run_bids-pipeline.sh): print the sbatch options and stop
     if args.slurm_options:
         try:
             print(" ".join(slurm_options(cfg)))
         except (KeyError, TypeError, OSError) as err:
-            log.error(f"Could not get the Slurm settings from study.yaml: {err}")
+            log.error(f"Could not get the Slurm settings from global-study.yaml: {err}")
             return 2
         return 0
     # Check every setting (misspelled names, missing values, leftover EDIT ME, ...)
@@ -1108,8 +1108,8 @@ def main(argv=None) -> int:
 STEP_TEXT_PAST = {"failed": "failed", "skipped": "was skipped", "planned": "didn't run"}
 
 
-# This part runs only when the file is started as a program ("python run_pipeline.py ..."),
+# This part runs only when the file is started as a program ("python run_bids-pipeline.py ..."),
 # not when another file imports it (as the tests do). sys.exit(main()) runs everything and
-# ends the program with main's exit status, which run_bids.sh and Slurm then see.
+# ends the program with main's exit status, which run_bids-pipeline.sh and Slurm then see.
 if __name__ == "__main__":
     sys.exit(main())

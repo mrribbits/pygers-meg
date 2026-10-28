@@ -520,7 +520,7 @@ dependencies:
       - cmeg2fif @ git+https://github.com/mrribbits/cMEG2FIF-Scully.git@04845fce818291835eada8a3095ab3290a633da6  # v2.16
       - eye2bids @ git+https://github.com/mrribbits/eye2bids.git@0991c4c6e25b581b24a7011f8fdc103fddd7f26a  # Scully fork, branch scully-eye2bids
       - entrypoints==0.4.2  # papermill
-      - papermill==2.7.0  # runs the notebooks in the pipeline (run_bids.sh)
+      - papermill==2.7.0  # runs the notebooks in the pipeline (run_bids-pipeline.sh)
       - tenacity==9.2.1  # papermill
       - pyqt6==6.11.0
       - pyqt6-qt6==6.11.2
