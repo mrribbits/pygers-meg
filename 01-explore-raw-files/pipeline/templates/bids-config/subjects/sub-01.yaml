@@ -16,7 +16,8 @@ study_config: "../study.yaml"
 # The BIDS labels: letters and digits only, in quotes. The raw data must be in
 #   <sourcedata_root>/sub-<subject>/ses-<session>/raw/
 # The MRI uses the same session label as the MEG.
-# In a study without sessions (study.sessions: false in study.yaml), write  session: null
+# In a study without sessions (sessions: false, in the study: section of study.yaml), write
+#   session: null
 # and the raw data are in  <sourcedata_root>/sub-<subject>/raw/
 subject: "01"
 session: "01"

@@ -228,7 +228,7 @@ eye_sync:
   match_mode: "name"
   code_pattern: 'TRIGGER\s+(\d+)'     # used with match_mode "code"
   name_pattern: '(\w+)_onset'         # used with match_mode "name" when name_map is null
-  # Exact EyeLink message -> MEG event name (a name from events.event_id). null = use name_pattern.
+  # Exact EyeLink message -> MEG event name (a name from event_id, in the events: section). null = use name_pattern.
   name_map:
     standard_onset: "standard"
     deviant_onset: "deviant"

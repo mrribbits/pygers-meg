@@ -22,6 +22,9 @@
 #
 #  Values written as "EDIT ME" must be replaced: the pipeline refuses to run while any
 #  setting still says "EDIT ME" or contains "[yourpath]".
+#
+#  Messages from the checks name a setting by its section and name, joined with a dot:
+#  options.write_dataset_files is the write_dataset_files line in the options: section.
 # =====================================================================================
 
 
@@ -49,7 +52,7 @@ study:
 #    ├── bids/                              <- bids_root: the BIDS dataset (anonymized data only)
 #    └── sourcedata/                        <- sourcedata_root
 #        ├── code/heuristic.py              <- the MRI naming rules (written by notebook 03)
-#        └── sub-01/ses-01/                 <- sub-01/ when study.sessions is false
+#        └── sub-01/ses-01/                 <- just sub-01/ when sessions: is false (above)
 #            ├── raw/                       <- the files from the lab, as they came (never changed)
 #            │   ├── cMEG/                  <- one <prefix>_cMEG_Data folder per recording
 #            │   ├── einscan/               <- head digitization files
@@ -76,7 +79,7 @@ paths:
 #  to yours. The pipeline checks before running that each file exists and starts.
 #  The containers are Apptainer/Singularity images (.sif files).
 software:
-  # HeuDiConv and pydeface (notebook 03). Can be null if data.mri is false.
+  # HeuDiConv and pydeface (notebook 03). Can be null if mri: is false (data: section below).
   heudiconv_sif: "/jukebox/[yourpath]/singularity-containers/heudiconv/heudiconv-1.5.1.sif"
   pydeface_sif: "/jukebox/[yourpath]/singularity-containers/pydeface/pydeface-2026-08-10.sif"
   # The BIDS validator (notebooks 03 and 06).
@@ -203,8 +206,8 @@ facility_overrides: {}
 #  Everything from here on describes the BIDS dataset for the people who will use it.
 #  It becomes the dataset-level files: dataset_description.json, CITATION.cff, CHANGES,
 #  participants.json and task-<label>_meg.json. These are written only when
-#  options.write_dataset_files (above) is true. Edit this part when you prepare a release:
-#  a new "changes" entry, a new date, new authors.
+#  write_dataset_files (in the options: section above) is true. Edit this part when you
+#  prepare a release: a new "changes" entry, a new date, new authors.
 #
 #  The README and LICENSE texts are in text/.
 # =====================================================================================
