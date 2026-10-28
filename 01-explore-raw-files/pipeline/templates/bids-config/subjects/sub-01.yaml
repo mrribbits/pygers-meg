@@ -71,7 +71,7 @@ bad_reasons: {}
 # -------------------------------------------------------------------------------------
 #  The participant (participants.tsv)
 # -------------------------------------------------------------------------------------
-#  One value per column; every column must be described in dataset.yaml
+#  One value per column; every column must be described in study.yaml
 #  (participants_columns). participant_id is added for you. Use "n/a" for unknown.
 participant:
   age: 30

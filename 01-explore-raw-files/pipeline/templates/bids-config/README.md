@@ -19,9 +19,8 @@ Copy this whole `bids-config` folder next to your study's data, for example to
 
 | File | What's in it | How often |
 |---|---|---|
-| `study.yaml` | where the data are, your software (containers, edf2asc), what was recorded, what to run, options, job settings | once per study |
+| `study.yaml` | where the data are, your software (containers, edf2asc), what was recorded, what to run, options, job settings; at the end, the published dataset's description: name, authors, license, version history, participant columns | once per study (the description again for each release) |
 | `processing.yaml` | how each notebook processes the data: events, MRI naming words, sync rules, behavioral columns | once per study |
-| `dataset.yaml` | the BIDS dataset's name, authors, license, version history, participant columns | once per study |
 | `private.yaml` | DAYSBACK, the secret date shift (keep this file private) | once per study |
 | `text/` | README, task description, instructions, license text | once per study |
 | `subjects/sub-01.yaml` | one session: labels, recording names, bad channels, participant details | one file per session |
@@ -87,11 +86,11 @@ and `sourcedata/`.
 
 These texts can contain placeholders, filled in by notebook 04 when it runs:
 `text/README.md`, `text/LICENSE.txt`, `facility.yaml`'s `software_versions` and
-`emptyroom_description`, and the lines of `changes` in `dataset.yaml`.
+`emptyroom_description`, and the lines of `changes` in `study.yaml`.
 
 | Placeholder | Becomes |
 |---|---|
-| `{ds_name}` | the dataset name (`dataset.yaml`, `description.name`) |
+| `{ds_name}` | the dataset name (`study.yaml`, `description.name`) |
 | `{task}` | the task label |
 | `{event_codes}` | the event names and codes, e.g. `standard = 1, deviant = 2` |
 | `{n_meg_channels}`, `{n_ref_channels}` | the number of MEG and reference channels in the recording |
@@ -99,7 +98,7 @@ These texts can contain placeholders, filled in by notebook 04 when it runs:
 | `{emptyroom_layout}` | `same-session` or `sub-emptyroom` |
 | `{cmeg2fif_version}` | the cMEG2FIF version, from the conversion log |
 | `{mne_version}`, `{mne_bids_version}` | the MNE and MNE-BIDS versions used |
-| `{license}` | the license name (`dataset.yaml`, `description.license`) |
+| `{license}` | the license name (`study.yaml`, `description.license`) |
 | `{anonymization_note}` | a sentence on how the data were anonymized (empty if not anonymized) |
 
 ## Bad channels

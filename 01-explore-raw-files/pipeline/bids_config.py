@@ -3,9 +3,9 @@
 A study's settings are spread over several YAML files (see templates/bids-config/):
 
     subjects/sub-01.yaml   one session: labels, recording names, bad channels, participant
-    study.yaml             where the data are, what to run, options, job settings
+    study.yaml             where the data are, what to run, options, job settings, and
+                           (at the end) the published dataset's description
     processing.yaml        how each notebook processes the data
-    dataset.yaml           the BIDS dataset's description
     private.yaml           DAYSBACK, the secret date shift
     text/                  README, task description, instructions, license
     facility.yaml          the Scully MEG lab's settings (in this folder), plus the study's
@@ -49,6 +49,10 @@ TEXT_FILES = {
     "instructions": "instructions.txt",
     "license": "LICENSE.txt",
 }
+
+# The sections at the end of study.yaml that describe the published dataset (until
+# October 2026 a separate dataset.yaml). load() keeps them apart, in Config.dataset.
+DATASET_KEYS = ("description", "citation", "changes", "participants_columns", "task_sidecar")
 
 # The {placeholders} notebook 04 can fill in (its fill_placeholders function). Keep in step
 # with that function.
@@ -168,19 +172,25 @@ def load(subject_file) -> Config:
     study = _read_yaml(study_file, "Study file (study_config)")
 
     files_section = study.get("files") or {}
+    if "dataset" in files_section:
+        raise ConfigError(
+            f"{study_file}: dataset.yaml is now part of study.yaml. Paste its sections (description, "
+            "citation, changes, participants_columns, task_sidecar) at the end of study.yaml, and remove "
+            "the line 'dataset: ...' under files:. (See the template's study.yaml.)")
+    # The published dataset's description: the last sections of study.yaml
+    dataset = {k: study[k] for k in DATASET_KEYS if k in study}
+    study = {k: v for k, v in study.items() if k not in DATASET_KEYS}
     config_dir = study_file.parent
     facility_file = files_section.get("facility")
     files = {
         "subject": subject_file,
         "study": study_file,
         "processing": config_dir / files_section.get("processing", "processing.yaml"),
-        "dataset": config_dir / files_section.get("dataset", "dataset.yaml"),
         "private": config_dir / files_section.get("private", "private.yaml"),
         "text_dir": config_dir / files_section.get("text_dir", "text"),
         "facility": (config_dir / facility_file).resolve() if facility_file else DEFAULT_FACILITY_FILE,
     }
     processing = _read_yaml(files["processing"], "processing.yaml")
-    dataset = _read_yaml(files["dataset"], "dataset.yaml")
     private = _read_yaml(files["private"], "private.yaml")
     facility = _read_yaml(files["facility"], "facility.yaml")
 
@@ -226,7 +236,7 @@ def _schema_problems(cfg: Config) -> list:
     schema = _schema()
     problems = []
     parts = [("study", cfg.study, "study"), ("subject", cfg.subject, "subject"),
-             ("processing", cfg.processing, "processing"), ("dataset", cfg.dataset, "dataset"),
+             ("processing", cfg.processing, "processing"), ("dataset", cfg.dataset, "study"),
              ("private", cfg.private, "private"), ("facility", cfg.facility, "facility")]
     for part, data, label in parts:
         sub = {"$schema": schema["$schema"], "$defs": schema["$defs"], "$ref": f"#/$defs/{part}"}
@@ -263,7 +273,7 @@ def _walk(value, where=""):
 def _placeholder_problems(cfg: Config) -> list:
     problems = []
     parts = [("study.yaml", cfg.study), (cfg.subject_file.name, cfg.subject),
-             ("processing.yaml", cfg.processing), ("dataset.yaml", cfg.dataset),
+             ("processing.yaml", cfg.processing), ("study.yaml", cfg.dataset),
              ("facility.yaml", cfg.facility)]
     for file, data in parts:
         for where, text in _walk(data):
@@ -347,7 +357,7 @@ def _cross_problems(cfg: Config) -> list:
     undescribed = sorted(cols - set(cfg.dataset.get("participants_columns", {})))
     if undescribed:
         p.append(f"{cfg.subject_file.name}: participant has column(s) {undescribed}; describe them in "
-                 "dataset.yaml (participants_columns)")
+                 "study.yaml (participants_columns)")
 
     # Bad channels: add and keep don't overlap
     bad = cfg.subject.get("bad_channels")
@@ -360,7 +370,7 @@ def _cross_problems(cfg: Config) -> list:
     for i, entry in enumerate(cfg.dataset.get("changes") or []):
         d = str(entry.get("date", ""))
         if not any(m in d for m in PLACEHOLDER_MARKS) and not re.fullmatch(r"\d{4}-\d{2}-\d{2}", d):
-            p.append(f"dataset.yaml: changes[{i}].date should look like 2026-11-01, not {d!r}")
+            p.append(f"study.yaml: changes[{i}].date should look like 2026-11-01, not {d!r}")
 
     # Anonymization needs a fixed DAYSBACK
     if cfg.processing.get("anonymization", {}).get("anonymize", True) and not isinstance(cfg.private.get("daysback"), int):
@@ -389,7 +399,7 @@ def _cross_problems(cfg: Config) -> list:
     texts["facility.yaml: meg.emptyroom_description"] = cfg.facility.get("meg", {}).get("emptyroom_description", "")
     for i, entry in enumerate(cfg.dataset.get("changes") or []):
         for j, item in enumerate(entry.get("items", [])):
-            texts[f"dataset.yaml: changes[{i}].items[{j}]"] = item
+            texts[f"study.yaml: changes[{i}].items[{j}]"] = item
     for where, t in texts.items():
         unknown = _unknown_placeholders(t or "")
         if unknown:

@@ -109,10 +109,9 @@ $defs:
       files:
         type: object
         additionalProperties: false
-        required: [processing, dataset, private, text_dir, facility]
+        required: [processing, private, text_dir, facility]
         properties:
           processing: {$ref: "#/$defs/path"}
-          dataset: {$ref: "#/$defs/path"}
           private: {$ref: "#/$defs/path"}
           text_dir: {$ref: "#/$defs/path"}
           facility: {$ref: "#/$defs/optional_path"}
@@ -304,6 +303,8 @@ $defs:
               count_blinks_starting_before: {type: boolean}
 
   # =====================================================================================
+  # The published dataset's description: the last sections of study.yaml (bids_config.load
+  # separates them from the other study settings before checking)
   dataset:
     type: object
     additionalProperties: false
