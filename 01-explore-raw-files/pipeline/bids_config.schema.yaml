@@ -4,7 +4,7 @@
 # being silently ignored.
 
 $schema: "https://json-schema.org/draft/2020-12/schema"
-title: "Pygers-MEG BIDS pipeline configuration"
+title: "Pygers-MEG-to-BIDS pipeline configuration"
 
 $defs:
   # ---- small building blocks ----

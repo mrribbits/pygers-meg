@@ -916,7 +916,7 @@ def main(argv=None) -> int:
     (0 = all ran, 1 = a notebook failed or was skipped, 2 = stopped before running)."""
 
     # ---- 1. Read the command line ----
-    parser = argparse.ArgumentParser(description="Run the Pygers-MEG notebooks for one subject/session.")
+    parser = argparse.ArgumentParser(description="Run the Pygers-MEG-to-BIDS notebooks for one subject/session.")
     parser.add_argument("subject_file", help="e.g. /jukebox/<lab>/<study>/bids-config/subjects/sub-01.yaml")
     parser.add_argument("--steps", type=_parse_steps,
                         help="the notebooks to run, e.g. 04,05 (instead of steps: in study.yaml)")

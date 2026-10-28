@@ -1,6 +1,6 @@
 #!/bin/bash
 # =====================================================================================
-#  run_bids.sh: convert one subject/session to BIDS on scotty (the Pygers-MEG pipeline)
+#  run_bids.sh: convert one subject/session to BIDS on scotty (the Pygers-MEG-to-BIDS pipeline)
 # =====================================================================================
 #
 #  On scotty, in the pygers-meg environment, from pygers-meg's 01-explore-raw-files folder:

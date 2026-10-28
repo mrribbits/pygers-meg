@@ -698,7 +698,7 @@ def write_settings(settings: dict, path) -> Path:
 # =====================================================================================
 
 def main(argv=None) -> int:
-    parser = argparse.ArgumentParser(description="Check a Pygers-MEG bids-config (starting from a subject file).")
+    parser = argparse.ArgumentParser(description="Check a Pygers-MEG-to-BIDS bids-config (starting from a subject file).")
     parser.add_argument("subject_file", help="e.g. /jukebox/<lab>/<study>/bids-config/subjects/sub-01.yaml")
     parser.add_argument("--show", choices=NOTEBOOKS, help="also print the settings this notebook would receive")
     parser.add_argument("--no-data", action="store_true",

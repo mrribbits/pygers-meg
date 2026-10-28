@@ -1,4 +1,4 @@
-# pipeline/
+# pipeline/: the Pygers-MEG-to-BIDS pipeline
 
 Runs the six notebooks in this folder's parent, `01-explore-raw-files/`, as one cluster job, with the
 settings for a study taken from YAML files instead of edited into the notebooks.
