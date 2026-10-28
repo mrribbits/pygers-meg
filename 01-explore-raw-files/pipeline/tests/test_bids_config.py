@@ -1,16 +1,27 @@
-"""Checks that the bids-config template and the notebooks agree.
+"""Checks that the notebooks, the bids-config template and bids_config.py agree.
 
 Run either way (in the pygers-meg environment, from pygers-meg's 01-explore-raw-files folder):
     python pipeline/tests/test_bids_config.py
     python -m pytest pipeline/tests
 
-What it checks:
-  * every setting a notebook asks for with from_config() is produced by the configuration
-    (and nothing extra), for all six notebooks;
-  * the template's values equal the notebooks' own example values (apart from a few known,
-    intended differences listed below);
-  * the template as shipped reports exactly its placeholders, and a filled-in copy is complete;
-  * common mistakes give an error.
+No notebook is run and no real data is touched: each test builds a fake study (a filled-in
+copy of the template and an empty raw folder tree) in a temporary folder.
+
+The tests (see tests/README.md for more):
+  test_names_match_the_notebooks         every from_config("...") setting in notebooks 01-06 is
+                                         provided by the configuration, and nothing extra
+  test_values_match_the_notebook_examples  the template's values equal the notebooks' example
+                                         values (apart from INTENDED_DIFFERENCES below)
+  test_template_lists_its_placeholders   the template as shipped fails only for its EDIT ME /
+                                         [yourpath] placeholders and DAYSBACK
+  test_filled_template_is_complete       a filled-in copy passes, and its raw files are found
+  test_mistakes_are_caught               typical mistakes (misspelled setting, "overwrite: maybe",
+                                         "sub-01" as a label, ...) are reported
+  test_study_without_sessions            with sessions: false, nothing contains "ses-"
+  test_sessions_must_match_the_study     a subject file that disagrees with sessions: is reported
+
+If one fails after you changed a notebook, see "When you change a notebook" in
+pipeline/README.md.
 """
 from __future__ import annotations
 

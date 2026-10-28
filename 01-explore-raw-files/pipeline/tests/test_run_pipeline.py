@@ -3,6 +3,20 @@
 Run either way (in the pygers-meg environment, from pygers-meg's 01-explore-raw-files folder):
     python pipeline/tests/test_run_pipeline.py
     python -m pytest pipeline/tests
+
+Uses the same fake study as test_bids_config.py (filled_config()), in a temporary folder.
+
+The tests (see tests/README.md for more):
+  test_default_plan_runs_everything      with every step on, all six notebooks are planned
+  test_04_brings_05_and_06_always_runs   choosing 04 adds 05; 06 is always added
+  test_missing_data_skips_its_notebooks  no eye tracking / MRI: their notebooks are skipped
+  test_inputs_from_notebooks_that_dont_run_must_exist
+                                         --steps 04 without 01's FIF files stops the pre-flight
+                                         check and says which notebook to add
+  test_paths_without_sessions            no "ses-" in the runner's paths or job name
+  test_steps_option                      "4,5" -> 04, 05; "07" is rejected
+  test_slurm_options                     sbatch options from study.yaml, incl. optional email
+  test_lock_is_exclusive_and_released    only one job at a time holds the BIDS dataset lock
 """
 from __future__ import annotations
 
