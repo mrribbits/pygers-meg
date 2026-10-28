@@ -1,4 +1,4 @@
-# bids-config: a study's settings for the Pygers-MEG pipeline
+# bids-config: a study's settings for the Pygers-MEG-to-BIDS pipeline
 
 This folder holds everything the pipeline needs to know about one study. The pipeline
 reads it and passes the settings to the six notebooks, so you never edit the notebooks.

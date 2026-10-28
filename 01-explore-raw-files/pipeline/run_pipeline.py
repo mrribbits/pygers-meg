@@ -1,4 +1,4 @@
-"""Run the Pygers-MEG notebooks for one subject/session, with HTML reports.
+"""Run the Pygers-MEG-to-BIDS notebooks for one subject/session, with HTML reports.
 
 Normally started by run_bids.sh (which submits it to Slurm), but it also runs on its own,
 in the pygers-meg environment, from pygers-meg's 01-explore-raw-files folder:

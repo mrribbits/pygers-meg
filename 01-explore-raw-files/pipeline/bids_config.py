@@ -1,4 +1,4 @@
-"""Read, check and resolve a study's bids-config files for the Pygers-MEG pipeline.
+"""Read, check and resolve a study's bids-config files for the Pygers-MEG-to-BIDS pipeline.
 
 A study's settings are spread over several YAML files (see templates/bids-config/):
 
