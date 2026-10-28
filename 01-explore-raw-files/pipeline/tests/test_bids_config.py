@@ -180,19 +180,6 @@ def test_mistakes_are_caught():
         assert any(expect in p for p in problems), (expect, problems)
 
 
-def test_old_separate_dataset_yaml_is_explained():
-    subject_file = filled_config()
-    p = subject_file.parent.parent / "study.yaml"
-    p.write_text(p.read_text(encoding="utf-8").replace('  processing: "processing.yaml"\n',
-                 '  processing: "processing.yaml"\n  dataset: "dataset.yaml"\n'), encoding="utf-8")
-    try:
-        bc.load(subject_file)
-    except bc.ConfigError as err:
-        assert "now part of study.yaml" in str(err)
-    else:
-        raise AssertionError("an old study.yaml with files: dataset: was accepted")
-
-
 def test_study_without_sessions():
     cfg = bc.load(filled_config(sessions=False))
     assert bc.check(cfg) == []

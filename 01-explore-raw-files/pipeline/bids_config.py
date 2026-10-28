@@ -172,11 +172,6 @@ def load(subject_file) -> Config:
     study = _read_yaml(study_file, "Study file (study_config)")
 
     files_section = study.get("files") or {}
-    if "dataset" in files_section:
-        raise ConfigError(
-            f"{study_file}: dataset.yaml is now part of study.yaml. Paste its sections (description, "
-            "citation, changes, participants_columns, task_sidecar) at the end of study.yaml, and remove "
-            "the line 'dataset: ...' under files:. (See the template's study.yaml.)")
     # The published dataset's description: the last sections of study.yaml
     dataset = {k: study[k] for k in DATASET_KEYS if k in study}
     study = {k: v for k, v in study.items() if k not in DATASET_KEYS}
