@@ -1,7 +1,63 @@
-# The rules each configuration file must follow (JSON Schema, written as YAML).
-# bids_config.py checks every file against its section below before anything runs.
-# "additionalProperties: false" makes a misspelled setting name an error instead of
-# being silently ignored.
+# =====================================================================================
+#  bids_config.schema.yaml: the rules every bids-config file must follow
+# =====================================================================================
+#
+#  WHAT IT IS FOR
+#  A study's settings are typed by hand into YAML files, so typos are easy: "keep_wrok"
+#  instead of "keep_work", "overwrite: maybe", "subject: sub-01" instead of "01". YAML
+#  itself accepts all of these. Without a check, a misspelled setting would simply be
+#  ignored (the notebook would never get it), and a wrong value would only fail hours
+#  later, in the middle of a notebook.
+#
+#  This file lists, for every configuration file, which settings exist, which are
+#  required, and what kind of value each one takes. bids_config.py checks the files
+#  against these rules first, every time (python pipeline/bids_config.py ..., and the
+#  pre-flight check of run_bids.sh), and lists every broken rule, e.g.
+#
+#      processing.yaml: eye_conversion: Unknown setting(s), misspelled? ('keep_wrok' was unexpected)
+#      study.yaml: options.overwrite: 'maybe' should be true or false
+#      sub-01.yaml: subject: 'sub-01': use letters and digits only (no '-', '_' or spaces)
+#
+#  WHAT IT DOESN'T CHECK
+#  Only the form of each value, one file at a time. bids_config.py checks the rest after
+#  this: that settings in different files agree (e.g. every event in events.event_id has
+#  a description), that no "EDIT ME" or "[yourpath]" is left, and that the raw files can
+#  be found.
+#
+#  THE FORMAT
+#  This is a "JSON Schema" (a standard way to describe the shape of JSON or YAML data,
+#  https://json-schema.org), written in YAML. The words it uses:
+#    type: string / integer / number / boolean / array (a list) / object (a section of
+#        named settings) / "null" (YAML's null, i.e. nothing)
+#    properties:       the settings a section may contain, each with its own rules
+#    required:         the settings that must be there
+#    additionalProperties: false
+#                      no other settings allowed: this is what makes a misspelled name an
+#                      error instead of being silently ignored
+#    pattern:          the text must match this regular expression, e.g. "^[A-Za-z0-9]+$"
+#                      = letters and digits only
+#    enum: [a, b]      the value must be one of these; const: x = exactly this value
+#    minimum, minLength, minItems, uniqueItems: lower limits; no repeated list items
+#    items:            the rules for each item of a list
+#    anyOf: [A, B]     either rule A or rule B, e.g. a label or null
+#    $defs / $ref:     named rules ($defs) that other places reuse by name ($ref), like
+#                      "label" below, used for every subject, session and task label
+#
+#  THE SECTIONS (under $defs)
+#    small building blocks   label, path, ... reused by the sections below
+#    study                   study.yaml (without its last part, the dataset description)
+#    subject                 subjects/sub-XX.yaml
+#    processing              processing.yaml, after the subject file's overrides are applied
+#    dataset                 the last part of study.yaml: the published dataset's description
+#    private                 private.yaml
+#    facility                facility.yaml, after study.yaml's facility_overrides are applied
+#
+#  WHEN TO EDIT IT
+#  When a setting is added, renamed or removed (see "When you change a notebook" in
+#  pipeline/README.md): add it here under the right section, with its type, and in
+#  "required" if every study must set it. The tests (pipeline/tests/) then check that the
+#  template still follows these rules.
+# =====================================================================================
 
 $schema: "https://json-schema.org/draft/2020-12/schema"
 title: "Pygers-MEG-to-BIDS pipeline configuration"
@@ -24,6 +80,7 @@ $defs:
     additionalProperties: true
 
   # =====================================================================================
+  # study.yaml (its last part, the dataset description, is checked by "dataset" below)
   study:
     type: object
     additionalProperties: false
@@ -118,6 +175,7 @@ $defs:
       facility_overrides: {type: object}
 
   # =====================================================================================
+  # subjects/sub-XX.yaml (one recording session)
   subject:
     type: object
     additionalProperties: false
@@ -165,6 +223,7 @@ $defs:
       overrides: {type: object}
 
   # =====================================================================================
+  # processing.yaml, with the subject file's overrides already applied
   processing:
     type: object
     additionalProperties: false
@@ -384,6 +443,7 @@ $defs:
           cog_po_id: {type: string}
 
   # =====================================================================================
+  # private.yaml
   private:
     type: object
     additionalProperties: false
@@ -392,6 +452,7 @@ $defs:
       daysback: {anyOf: [{type: integer, minimum: 1}, {type: "null"}]}
 
   # =====================================================================================
+  # facility.yaml, with study.yaml's facility_overrides already applied
   facility:
     type: object
     additionalProperties: false
