@@ -8,6 +8,30 @@ study's.
 This README is for setting up and running a study. How the pipeline itself works (and how
 to change it) is in `01-explore-raw-files/bids-pipeline/README.md` in the pygers-meg repository.
 
+## Before you start: your software
+
+* **New environment:** create it with the repository's environment file. That already
+  includes papermill, cmeg2fif and the fixed eye2bids fork.
+
+  ```bash
+  conda env create -f scotty-environment.yml -n pygers-meg
+  ```
+
+* **Environment made before October 27, 2026:** add papermill, and reinstall eye2bids at
+  the fixed version (`0991c4c`):
+
+  ```bash
+  conda activate pygers-meg
+  pip install "papermill==2.7.0" "tenacity==9.2.1" "entrypoints==0.4.2"
+  pip install --force-reinstall --no-deps "eye2bids @ git+https://github.com/mrribbits/eye2bids.git@0991c4c6e25b581b24a7011f8fdc103fddd7f26a"
+  ```
+
+  Then restart any running Jupyter kernels, and check:
+
+  ```bash
+  pip freeze | grep -E "papermill|eye2bids|cmeg2fif"
+  ```
+
 ## Setting up a new study
 
 ### Step 1: Copy this folder
