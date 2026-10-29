@@ -1,14 +1,22 @@
 #!/usr/bin/env bash
-# scotty-jupyter — open an SSH tunnel to scotty and launch JupyterLab on a random port.
-# Usage: scotty-jupyter            (random port)
-#        scotty-jupyter 6123       (specific port)
+# scotty-jupyter — open an SSH tunnel to scotty and launch JupyterLab.
+# Usage: scotty-jupyter            (your own port, the same every time; see below)
+#        scotty-jupyter 6123       (a specific port)
+#
+# Why the same port every time: each Jupyter session saves a login cookie in your browser, named after
+# its port. Browsers don't keep cookies apart by port, so a new port each time piles up cookies until
+# some tools refuse the request (for example the 3D coregistration window in the preprocessing notebooks).
+# With one port you keep one cookie. Your port is worked out from your NetID, so different users
+# usually get different ports; if yours is busy, the script moves on to the next free one.
 
 # ---- user settings ---------------------------------------------------------------
-NETID="your_netid"                       
+NETID="your_netid"
 HOST="scotty.pni.princeton.edu"
 PROJECT_DIR="/jukebox/[yourpath]/pygers-meg"
 CONDA_ENV="pygers-meg"
 # -----------------------------------------------------------------------------
+
+MAX_TRIES=10   # how many ports to try if yours is busy
 
 port_ok() {
   local p=$1
@@ -20,41 +28,60 @@ port_ok() {
   return 0
 }
 
+next_port() {
+  # The next allowed port after $1 (wrapping from 9999 back to 4000)
+  local p=$1
+  while :; do
+    p=$(( p + 1 )); (( p > 9999 )) && p=4000
+    port_ok "$p" && { echo "$p"; return; }
+  done
+}
+
 if [[ -n "$1" ]]; then
   PORT=$1
   port_ok "$PORT" || { echo "Port $PORT is excluded or busy on this Mac."; exit 1; }
 else
-  while :; do
-    PORT=$(( RANDOM % 6000 + 4000 ))
-    port_ok "$PORT" && break
-  done
+  # Your own port: a number from 4000-9999 worked out from your NetID (the same every time)
+  sum=$(printf '%s' "$NETID" | cksum | cut -d' ' -f1)
+  PORT=$(( 4000 + sum % 6000 ))
+  port_ok "$PORT" || PORT=$(next_port "$PORT")
 fi
 
-echo "Using port $PORT  →  JupyterLab will be at http://127.0.0.1:${PORT}/lab"
+for (( try = 1; try <= MAX_TRIES; try++ )); do
+  # Jupyter prints its address with "localhost" (not 127.0.0.1). Browsers keep cookies for the two
+  # apart, so this also starts clean for anyone who has a pile of old cookies for 127.0.0.1.
+  echo "Using port $PORT  →  JupyterLab will be at http://localhost:${PORT}/lab"
 
-# Commands run on scotty. \$ is escaped so it expands remotely, not locally.
-REMOTE_CMD=$(cat <<EOF
+  # Commands run on scotty. \$ is escaped so it expands remotely, not locally.
+  REMOTE_CMD=$(cat <<EOF
 if ss -ltn "sport = :${PORT}" | grep -q LISTEN; then
-  echo "Port ${PORT} is already taken on scotty. Run the script again to try another port."
+  echo "Port ${PORT} is already taken on scotty."
   exit 3
 fi
 ${MODULE_LOAD:-true}
 cd "${PROJECT_DIR}" || { echo "Cannot cd to ${PROJECT_DIR}"; exit 1; }
 eval "\$(conda shell.bash hook)"
 conda activate "${CONDA_ENV}" || { echo "Cannot activate conda env ${CONDA_ENV}"; exit 1; }
-exec jupyter lab --no-browser --ip=127.0.0.1 --port=${PORT} --ServerApp.port_retries=0
+exec jupyter lab --no-browser --ip=127.0.0.1 --port=${PORT} --ServerApp.port_retries=0 \
+  --ServerApp.custom_display_url=http://localhost:${PORT}
 EOF
 )
 
-# Escape any single quotes for the remote shell, then run it in a login bash.
-REMOTE_Q=${REMOTE_CMD//\'/\'\\\'\'}
+  # Escape any single quotes for the remote shell, then run it in a login bash.
+  REMOTE_Q=${REMOTE_CMD//\'/\'\\\'\'}
 
-ssh -t \
-  -o ExitOnForwardFailure=yes \
-  -L "${PORT}:localhost:${PORT}" \
-  "${NETID}@${HOST}" \
-  "bash -lc '${REMOTE_Q}'"
+  ssh -t \
+    -o ExitOnForwardFailure=yes \
+    -L "${PORT}:localhost:${PORT}" \
+    "${NETID}@${HOST}" \
+    "bash -lc '${REMOTE_Q}'"
+  rc=$?
 
-rc=$?
-[[ $rc -eq 3 ]] && echo "(Remote port collision — just rerun.)"
-exit $rc
+  # 3 = the port is taken on scotty (by someone else): try the next one. Anything else: done.
+  [[ $rc -ne 3 ]] && exit $rc
+  PORT=$(next_port "$PORT")
+  echo "Trying port $PORT instead."
+done
+
+echo "No free port found after $MAX_TRIES tries. Run the script again, or give a port: scotty-jupyter 6123"
+exit 3

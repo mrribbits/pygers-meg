@@ -71,7 +71,7 @@ Choose **one** of the two setups below, then set your paths in Section 0.3 of th
 
 #### 0.1.1 Pick a port and SSH in with a tunnel
 
-Choose a port number in the 4000–9999 range, avoiding 8800–8899. On a Mac, also avoid 5000 and 7000. The examples below use `4817`. Replace it with your number **everywhere** it appears.
+Choose a port number in the 4000–9999 range, avoiding 8800–8899. On a Mac, also avoid 5000 and 7000. The examples below use `4817`. Replace it with your number **everywhere** it appears, and use the same number every time you start Jupyter (0.1.4 explains why).
 
 In your laptop's Terminal, SSH to scotty with the tunnel:
 
@@ -146,14 +146,17 @@ On later sessions, you only need `conda activate pygers-meg`.
 #### 0.1.3 Launch Jupyter on scotty
 
 ```bash
-jupyter lab --no-browser --ip=127.0.0.1 --port=4817 --ServerApp.port_retries=0
+jupyter lab --no-browser --ip=127.0.0.1 --port=4817 --ServerApp.port_retries=0 \
+  --ServerApp.custom_display_url=http://localhost:4817
 ```
 
-`--ServerApp.port_retries=0` makes Jupyter fail loudly if the port is taken, instead of silently switching to a different port that your tunnel isn't connected to.
+`--ServerApp.port_retries=0` makes Jupyter fail loudly if the port is taken, instead of silently switching to a different port that your tunnel isn't connected to. `--ServerApp.custom_display_url` makes Jupyter print its address with `localhost` (see 0.1.4).
 
 #### 0.1.4 Open Jupyter in your laptop's browser
 
-Copy the URL that Jupyter prints, which looks like `http://127.0.0.1:4817/lab?token=...`, and paste it into your local browser.
+Copy the URL that Jupyter prints, which looks like `http://localhost:4817/lab?token=...`, and paste it into your local browser.
+
+**Why the same port, and `localhost`?** Each Jupyter session saves a login cookie in your browser, named after its port, and browsers don't keep cookies apart by port. A new port every time piles up cookies until some tools refuse the request; the 3D coregistration window in the preprocessing notebooks fails with `LineTooLong` ("Got more than 8190 bytes"). With one port you keep one cookie. Using `localhost` instead of `127.0.0.1` also leaves behind any old cookies piled up for `127.0.0.1`.
 
 #### 0.1.5 Shut down
 
@@ -227,6 +230,7 @@ It will then make the script executable and add it to your path.
 ### 1.3 Now you can use the `scotty-jupyter` script. 
 
 * The script will SSH into Scotty for you without a password.
+* It uses your own port, the same every time (worked out from your NetID; if it's busy, the script tries the next one), and opens Jupyter at `localhost`. See "Why the same port, and `localhost`?" in 0.1.4.
 * It will activate your pygers-meg environment.
 * `cd` you into the pygers-meg folder.
 * And launch JupyterLab so it prints the URL you can use to paste into your Mac's browser.
