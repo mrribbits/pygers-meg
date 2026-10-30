@@ -2,19 +2,20 @@
 
 Jupyter notebooks from the Pygers-MEG user group.
 
-| Raw to BIDS Notebooks | What it covers |
+| Raw to BIDS Notebooks (01-explore-raw-files/) | What it covers |
 |---|---|
-| [`01-explore-raw-files/01_Explore_Raw_OPM-MEG_Files.ipynb`](01-explore-raw-files/01_Explore_Raw_OPM-MEG_Files.ipynb) | Exploring raw Cerca `.cMEG` sessions, converting them to FIF with [cMEG2FIF](https://github.com/mrribbits/cMEG2FIF-Scully), and checking the result |
-| [`01-explore-raw-files/02_Explore_Eye_Data_Files.ipynb`](01-explore-raw-files/02_Explore_Eye_Data_Files.ipynb) | Converting raw `.EDF` files to BIDS with [edf2bids](https://github.com/mrribbits/eye2bids/tree/scully-config), and checking the result |
-| [`01-explore-raw-files/03_Dicom_to_BIDS_heudiconv.ipynb`](01-explore-raw-files/03_Dicom_to_BIDS_heudiconv.ipynb) | Converting DICOM files to NIFTI BIDS with [HeuDiConv](https://heudiconv.readthedocs.io/en/latest/), and checking the result |
-| [`01-explore-raw-files/04_FIF_to_BIDS.ipynb`](01-explore-raw-files/04_FIF_to_BIDS.ipynb) | Transitioning the FIF MEG data into the BIDS structure |
-| [`01-explore-raw-files/05_Sync_eye_to_MEG.ipynb`](01-explore-raw-files/05_Sync_eye_to_MEG.ipynb) | Aligning eye data with MEG data |
-| [`01-explore-raw-files/06_Validate_BIDS.ipynb`](01-explore-raw-files/06_Validate_BIDS.ipynb) | Final step running BIDS Validator |
+| [`01_Explore_Raw_OPM-MEG_Files.ipynb`](01-explore-raw-files/01_Explore_Raw_OPM-MEG_Files.ipynb) | Exploring raw Cerca `.cMEG` sessions, converting them to FIF with [cMEG2FIF](https://github.com/mrribbits/cMEG2FIF-Scully), and checking the result |
+| [`02_Explore_Eye_Data_Files.ipynb`](01-explore-raw-files/02_Explore_Eye_Data_Files.ipynb) | Converting raw `.EDF` files to BIDS with [edf2bids](https://github.com/mrribbits/eye2bids/tree/scully-config), and checking the result |
+| [`03_Dicom_to_BIDS_heudiconv.ipynb`](01-explore-raw-files/03_Dicom_to_BIDS_heudiconv.ipynb) | Converting DICOM files to NIFTI BIDS with [HeuDiConv](https://heudiconv.readthedocs.io/en/latest/), and checking the result |
+| [`04_FIF_to_BIDS.ipynb`](01-explore-raw-files/04_FIF_to_BIDS.ipynb) | Transitioning the FIF MEG data into the BIDS structure |
+| [`05_Sync_eye_to_MEG.ipynb`](01-explore-raw-files/05_Sync_eye_to_MEG.ipynb) | Aligning eye data with MEG data |
+| [`06_Validate_BIDS.ipynb`](01-explore-raw-files/06_Validate_BIDS.ipynb) | Final step running BIDS Validator |
 ---
 
-| Preprocessing Notebooks | What it covers |
+| Preprocessing Notebooks (02-preprocessing/) | What it covers |
 |---|---|
-| (02-preprocessing/TBD) | TBD |
+| [`01_FreeSurfer_recon-all.ipynb`](02-preprocessing/01_FreeSurfer_recon-all.ipynb) | Generate surface reconstructions and BEM/scalp surfaces |
+| [`02_Coreg_and_Forward.ipynb`](02-preprocessing/02_Coreg_and_Forward.ipynb) | Perform coregistration, create surface and volume source spaces and forward solutions |
 ---
 
 ## Getting the notebooks
