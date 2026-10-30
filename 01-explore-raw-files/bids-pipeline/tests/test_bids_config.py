@@ -89,9 +89,10 @@ def notebook_settings_in_code() -> dict:
 
 # ---- a filled-in copy of the template with a fake raw tree ----------------------------
 
-def filled_config(fill=True, sessions=True) -> Path:
+def filled_config(fill=True, sessions=True, fill_dataset=True) -> Path:
     """A filled-in copy of the template with a fake raw tree; sessions=False makes it a study
-    without sessions (study.sessions: false, session: null, sourcedata/sub-01/raw/)."""
+    without sessions (study.sessions: false, session: null, sourcedata/sub-01/raw/).
+    fill_dataset=False leaves the "EDIT ME" values of the dataset description and text/ in place."""
     root = Path(tempfile.mkdtemp())
     cfg_dir = root / "bids-config"
     shutil.copytree(TEMPLATE, cfg_dir, ignore=shutil.ignore_patterns(".*", "__pycache__"))
@@ -101,11 +102,12 @@ def filled_config(fill=True, sessions=True) -> Path:
                 s = f.read_text(encoding="utf-8")
                 s = s.replace("/jukebox/[yourpath]/auditory-oddball", str(root))
                 s = s.replace("/jukebox/[yourpath]/singularity-containers", "/jukebox/pinsk/singularity-containers")
-                s = s.replace('family-names: "EDIT ME"', 'family-names: "Test"')
-                s = s.replace('given-names: "EDIT ME"', 'given-names: "Person"')
-                s = s.replace('"EDIT ME: Institution"', '"Test University"')
-                s = re.sub(r'date: "EDIT ME"', 'date: "2026-11-01"', s)
-                s = s.replace("EDIT ME: replace this paragraph with the full legal code text if you are publishing the dataset.\n", "")
+                if fill_dataset:
+                    s = s.replace('family-names: "EDIT ME"', 'family-names: "Test"')
+                    s = s.replace('given-names: "EDIT ME"', 'given-names: "Person"')
+                    s = s.replace('"EDIT ME: Institution"', '"Test University"')
+                    s = re.sub(r'date: "EDIT ME"', 'date: "2026-11-01"', s)
+                    s = s.replace("EDIT ME: replace this paragraph with the full legal code text if you are publishing the dataset.\n", "")
                 s = s.replace("daysback: null", "daysback: 41234")
                 f.write_text(s, encoding="utf-8")
     if not sessions:
@@ -149,14 +151,28 @@ def test_values_match_the_notebook_examples():
 
 
 def test_template_lists_its_placeholders():
-    problems = bc.check(bc.load(filled_config(fill=False)))
+    cfg = bc.load(filled_config(fill=False))
+    problems = bc.check(cfg)
     assert problems, "the template as shipped should not pass"
-    assert all("EDIT ME" in p or "[yourpath]" in p or "daysback" in p for p in problems), problems
+    # What stops the run: the paths ([yourpath]) and DAYSBACK; "EDIT ME" only as a reminder
+    assert all("[yourpath]" in p or "daysback" in p for p in problems), problems
+    todos = bc.publication_todos(cfg)
+    assert todos and all("EDIT ME" in t for t in todos), todos
+
+
+def test_dataset_description_placeholders_dont_stop_the_run():
+    cfg = bc.load(filled_config(fill_dataset=False))
+    assert bc.check(cfg) == []
+    todos = bc.publication_todos(cfg)
+    assert any("citation.authors" in t for t in todos) and any("LICENSE" in t for t in todos), todos
+    # The release date still "EDIT ME": CITATION.cff gets today's date instead
+    assert bc.notebook_settings(cfg)["04"]["CFF_DATE_RELEASED"] is None
 
 
 def test_filled_template_is_complete():
     cfg = bc.load(filled_config())
     assert bc.check(cfg) == []
+    assert bc.publication_todos(cfg) == []
     inputs = bc.find_inputs(cfg)
     assert inputs["edf_file"].name == "test.EDF"
     assert inputs["dicom_template"] == "sub-{subject}/ses-{session}/raw/mri/dcm/*.dcm"

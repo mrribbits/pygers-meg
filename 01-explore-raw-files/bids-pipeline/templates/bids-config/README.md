@@ -49,8 +49,15 @@ Copy this whole `bids-config` folder next to your study's data, for example to
 | `text/` | README, task description, instructions, license text | once per study |
 | `subjects/sub-01.yaml` | one session: labels, recording names, bad channels, participant details | one file per session |
 
-Every setting has a comment explaining it. Replace everything that says `EDIT ME` or
-contains `[yourpath]`.
+Every setting has a comment explaining it. Placeholders come in two kinds:
+
+* **`[yourpath]`** (paths, containers): replace these before the first run. The pipeline
+  doesn't run while any setting still contains it.
+* **`EDIT ME`** in the published dataset's description (the end of `global-study.yaml`) and
+  in `text/` (authors, release date, license text): these can wait until you share the
+  dataset. The pipeline runs and lists them as reminders, and notebook 06 lists any that
+  reached the dataset. When you fill them in, run notebook 04 again with
+  `write_dataset_files: true`.
 
 The Scully MEG lab's own settings (hardware, institution) are not in this folder: they
 are in `01-explore-raw-files/bids-pipeline/facility.yaml` in the pygers-meg repository. To

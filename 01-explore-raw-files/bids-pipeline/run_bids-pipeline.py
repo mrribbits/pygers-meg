@@ -990,6 +990,8 @@ def main(argv=None) -> int:
     if not problems:
         more, warnings, facts = preflight(cfg, steps, settings, args.kernel)
         problems += more
+        # "EDIT ME" left in the dataset description or text/: a reminder, not a stop
+        warnings += [f"Fill in before sharing the dataset: {t}" for t in bc.publication_todos(cfg)]
     else:
         warnings, facts = [], []
 

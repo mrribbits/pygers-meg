@@ -40,6 +40,11 @@ SCHEMA_FILE = PIPELINE_DIR / "bids_config.schema.yaml"
 DEFAULT_FACILITY_FILE = PIPELINE_DIR / "facility.yaml"
 
 # Text that marks a value the user still has to fill in.
+#   "[yourpath]" (paths, containers): must be replaced before anything can run.
+#   "EDIT ME": must be replaced before anything can run, EXCEPT in the published dataset's
+#   description (the last part of global-study.yaml) and in text/. Those only end up in the
+#   dataset's description files (authors, release date, license text, ...), so they can wait until
+#   the dataset is shared: the checks list them as reminders (publication_todos()), not as problems.
 PLACEHOLDER_MARKS = ("EDIT ME", "[yourpath]")
 
 # The files in text/ (key -> file name).
@@ -265,22 +270,39 @@ def _walk(value, where=""):
         yield where, value
 
 
-def _placeholder_problems(cfg: Config) -> list:
-    problems = []
-    parts = [("global-study.yaml", cfg.study), (cfg.subject_file.name, cfg.subject),
-             ("processing.yaml", cfg.processing), ("global-study.yaml", cfg.dataset),
-             ("facility.yaml", cfg.facility)]
-    for file, data in parts:
+def _placeholders(cfg: Config, deferrable: bool) -> list:
+    """Placeholders left in the configuration. deferrable=False: those that stop the run (every
+    "[yourpath]", and "EDIT ME" outside the dataset description and text/). deferrable=True: the
+    "EDIT ME" values in the dataset description and text/, which can wait until the dataset is shared."""
+    found = []
+    parts = [("global-study.yaml", cfg.study, False), (cfg.subject_file.name, cfg.subject, False),
+             ("processing.yaml", cfg.processing, False), ("global-study.yaml", cfg.dataset, True),
+             ("facility.yaml", cfg.facility, False)]
+    for file, data, is_dataset in parts:
         for where, text in _walk(data):
             for mark in PLACEHOLDER_MARKS:
-                if mark in text:
-                    problems.append(f"{file}: {where} still says {mark!r}: {text[:80]!r}")
+                if mark in text and (is_dataset and mark == "EDIT ME") == deferrable:
+                    found.append(f"{file}: {where} still says {mark!r}: {text[:80]!r}")
     for key, name in TEXT_FILES.items():
         for mark in PLACEHOLDER_MARKS:
+            if (mark == "EDIT ME") != deferrable:
+                continue
             for n, line in enumerate(cfg.text.get(key, "").splitlines(), 1):
                 if mark in line:
-                    problems.append(f"text/{name}, line {n}: still says {mark!r}")
-    return problems
+                    found.append(f"text/{name}, line {n}: still says {mark!r}")
+    return found
+
+
+def _placeholder_problems(cfg: Config) -> list:
+    return _placeholders(cfg, deferrable=False)
+
+
+def publication_todos(cfg: Config) -> list:
+    """The "EDIT ME" values still in the dataset description (the last part of global-study.yaml)
+    and in text/: authors, release date, license text, ... They don't stop the pipeline (the
+    dataset files are written with them as they are), but must be filled in before the dataset is
+    shared; notebook 06 lists any that reached the dataset."""
+    return _placeholders(cfg, deferrable=True)
 
 
 def _unknown_placeholders(text: str) -> set:
@@ -613,7 +635,9 @@ def notebook_settings(cfg: Config, inputs: dict | None = None, summary_file=None
         "CHANGES_ENTRIES": [[c["version"], c["date"], c["items"]] for c in ds["changes"]],
         "LICENSE_TEXT": text("license"),
         "CFF_AUTHORS": cit["authors"], "CFF_MESSAGE": cit["message"],
-        "CFF_VERSION_OF_DATA": newest["version"], "CFF_DATE_RELEASED": newest["date"],
+        "CFF_VERSION_OF_DATA": newest["version"],
+        # A release date still "EDIT ME": None, so CITATION.cff gets today's date (a valid date)
+        "CFF_DATE_RELEASED": None if any(m in str(newest["date"]) for m in PLACEHOLDER_MARKS) else newest["date"],
         "CFF_PREFERRED_PAPER": cit["preferred_paper"],
         "WRITE_TASK_LEVEL_SIDECAR": ds["task_sidecar"]["write"],
         "COG_ATLAS_ID": ds["task_sidecar"]["cog_atlas_id"],
@@ -719,6 +743,11 @@ def main(argv=None) -> int:
         return 1
     print(f"OK: the configuration for {cfg.subject_file.name} is complete "
           f"({cfg.label}, task-{cfg.study['study']['task']}).")
+    todos = publication_todos(cfg)
+    if todos:
+        print(f"\nBefore you share the dataset, fill in these {len(todos)} value(s) (they don't stop the pipeline):")
+        for item in todos:
+            print("  -", item)
     if args.show:
         print(yaml.safe_dump({args.show: notebook_settings(cfg, inputs)[args.show]},
                              sort_keys=False, allow_unicode=True, width=100))

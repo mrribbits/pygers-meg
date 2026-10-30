@@ -21,8 +21,13 @@
 #  01-explore-raw-files/bids-pipeline/facility.yaml in the pygers-meg repository. Change any
 #  of them for this study under facility_overrides: near the end of this file.
 #
-#  Values written as "EDIT ME" must be replaced: the pipeline refuses to run while any
-#  setting still says "EDIT ME" or contains "[yourpath]".
+#  Placeholders to replace:
+#    "[yourpath]" (paths, containers): before the first run. The pipeline doesn't run while
+#      any setting still contains it.
+#    "EDIT ME" in the published dataset's description (the end of this file) and in text/
+#      (authors, release date, license text, ...): can wait until you share the dataset. The
+#      pipeline runs and lists them as reminders; notebook 06 lists any that reached the
+#      dataset. Fill them in, then run notebook 04 again with write_dataset_files: true.
 #
 #  Messages from the checks name a setting by its section and name, joined with a dot:
 #  options.write_dataset_files is the write_dataset_files line in the options: section.
