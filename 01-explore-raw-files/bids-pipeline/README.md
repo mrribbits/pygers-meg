@@ -109,3 +109,7 @@ python bids-pipeline/tests/test_run_pipeline.py
 
 Changes that don't touch these settings (text, plots, fixes inside a cell) need nothing
 else, but running the tests does no harm.
+
+The pipeline runs each notebook by its exact file name, listed in `NOTEBOOK_FILES` at the top
+of `bids_config.py`; other files next to them (`my_04.ipynb`, `04_FIF_to_BIDS_old.ipynb`, ...)
+are ignored. If you rename a notebook, change its name there too.

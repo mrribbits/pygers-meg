@@ -56,7 +56,7 @@ INTENDED_DIFFERENCES = {
 def notebook_settings_in_code() -> dict:
     """{notebook: {setting: example value or None}} from the from_config() calls in the notebooks."""
     out = {}
-    for nb_file in sorted(NOTEBOOKS_DIR.glob("0[1-6]_*.ipynb")):
+    for nb_file in (NOTEBOOKS_DIR / name for name in bc.NOTEBOOK_FILES.values()):
         key, found = nb_file.name[:2], {}
         for cell in json.loads(nb_file.read_text(encoding="utf-8"))["cells"]:
             if cell["cell_type"] != "code":

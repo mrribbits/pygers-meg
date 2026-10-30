@@ -41,6 +41,7 @@ also works, if pytest is installed.)
 | `test_missing_data_skips_its_notebooks` | Without eye tracking or MRI (`data:` section), their notebooks are skipped. |
 | `test_inputs_from_notebooks_that_dont_run_must_exist` | `--steps 04` with no FIF files from 01 (and no files from 02, 03) stops the pre-flight check, which says which notebook to add. |
 | `test_paths_without_sessions` | The files the runner checks between notebooks, and the Slurm job name, have no `ses-` in a study without sessions. |
+| `test_notebooks_found_by_exact_name` | The six notebooks are found by their exact names; copies with similar names (`04_FIF_to_BIDS_old.ipynb`) are ignored, and a missing notebook is reported with the similar names found. |
 | `test_steps_option` | `--steps 4,5` becomes 04, 05; `07` is rejected. |
 | `test_slurm_options` | The sbatch options come from `global-study.yaml` (time, memory, CPUs, partition), and the email options only when `mail_user` is set; bad email settings are reported. |
 | `test_lock_is_exclusive_and_released` | While one job holds the lock on the BIDS dataset, a second can't take it; once released, it can. |

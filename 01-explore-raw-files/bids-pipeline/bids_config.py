@@ -69,6 +69,18 @@ KNOWN_PLACEHOLDERS = {
 
 NOTEBOOKS = ("01", "02", "03", "04", "05", "06")
 
+# The exact file name of each notebook (in 01-explore-raw-files/). The pipeline runs these files and
+# no others, so copies next to them (my_04.ipynb, 04_FIF_to_BIDS_old.ipynb, ...) are never picked up.
+# Keep in step if a notebook is renamed.
+NOTEBOOK_FILES = {
+    "01": "01_Explore_Raw_OPM-MEG_Files.ipynb",
+    "02": "02_Explore_Eye_Data_Files.ipynb",
+    "03": "03_Dicom_to_BIDS_heudiconv.ipynb",
+    "04": "04_FIF_to_BIDS.ipynb",
+    "05": "05_Sync_eye_to_MEG.ipynb",
+    "06": "06_Validate_BIDS.ipynb",
+}
+
 
 class ConfigError(Exception):
     """Raised with a list of problems when the configuration can't be used."""

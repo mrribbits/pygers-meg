@@ -14,6 +14,8 @@ The tests (see tests/README.md for more):
                                          --steps 04 without 01's FIF files stops the pre-flight
                                          check and says which notebook to add
   test_paths_without_sessions            no "ses-" in the runner's paths or job name
+  test_notebooks_found_by_exact_name
+                                         the six notebooks by exact name; copies are ignored
   test_steps_option                      "4,5" -> 04, 05; "07" is rejected
   test_slurm_options                     sbatch options from global-study.yaml, incl. optional email
   test_lock_is_exclusive_and_released    only one job at a time holds the BIDS dataset lock
@@ -82,6 +84,26 @@ def test_paths_without_sessions():
     assert str(rp.requirements(cfg, settings)["05"][-1][2][0]).endswith("bids/sub-01/meg/sub-01_task-oddballftcued*_meg.fif")
     assert "--job-name=bids_sub-01" in rp.slurm_options(cfg)
     assert cfg.session_dir == cfg.sourcedata_root / "sub-01"
+
+
+def test_notebooks_found_by_exact_name():
+    import tempfile
+    folder = Path(tempfile.mkdtemp())
+    for name in bc.NOTEBOOK_FILES.values():
+        (folder / name).write_text("{}")
+    # Copies with similar names are ignored
+    (folder / "04_FIF_to_BIDS_old.ipynb").write_text("{}")
+    (folder / "04_FIF_to_BIDS-Copy1.ipynb").write_text("{}")
+    found = rp.find_notebooks(folder)
+    assert found["04"].name == "04_FIF_to_BIDS.ipynb"
+    # A missing notebook is reported, with the similar names found
+    (folder / "04_FIF_to_BIDS.ipynb").unlink()
+    try:
+        rp.find_notebooks(folder)
+    except bc.ConfigError as err:
+        assert "04_FIF_to_BIDS.ipynb not found" in str(err) and "04_FIF_to_BIDS_old.ipynb" in str(err)
+    else:
+        raise AssertionError("a missing notebook was not reported")
 
 
 def test_steps_option():

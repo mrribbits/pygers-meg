@@ -213,17 +213,20 @@ class Step:
 
 
 def find_notebooks(folder: Path = NOTEBOOKS_DIR) -> dict:
-    """{"01": path, ...}: the one 0N_*.ipynb file per notebook in the folder.
+    """{"01": path, ...}: each notebook, found by its exact file name (bc.NOTEBOOK_FILES).
 
-    Raises bc.ConfigError (listing the problems) if a notebook is missing or there are two
-    candidates, e.g. 04_FIF_to_BIDS.ipynb and 04_old.ipynb. (my_*.ipynb copies don't match.)"""
+    Other files next to them, such as copies (my_04.ipynb, 04_FIF_to_BIDS_old.ipynb), are ignored.
+    Raises bc.ConfigError (listing the problems) if a notebook is missing, naming the files that
+    look like it, in case it was renamed."""
     found, problems = {}, []
-    for key in bc.NOTEBOOKS:                                  # "01" ... "06"
-        matches = sorted(folder.glob(f"{key}_*.ipynb"))       # e.g. every 04_*.ipynb
-        if len(matches) == 1:
-            found[key] = matches[0]
+    for key, name in bc.NOTEBOOK_FILES.items():               # "01": "01_Explore_Raw_OPM-MEG_Files.ipynb", ...
+        path = folder / name
+        if path.is_file():
+            found[key] = path
         else:
-            problems.append(f"{folder}: expected one {key}_*.ipynb, found {[m.name for m in matches] or 'none'}")
+            similar = sorted(p.name for p in folder.glob(f"{key}_*.ipynb"))   # e.g. every 04_*.ipynb
+            problems.append(f"{folder}: notebook {name} not found"
+                            + (f" (similar names there: {similar})" if similar else ""))
     if problems:
         raise bc.ConfigError(problems)
     return found
