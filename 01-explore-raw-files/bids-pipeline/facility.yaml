@@ -86,7 +86,11 @@ meg:
   misc_cutoffs: ["n/a", "n/a"]
   # A description for individual channels (e.g. what each BNC input is wired to), written to
   # the description column of _channels.tsv: {"channel name": "description"}. {} = none.
-  channel_descriptions: {}
+  # The EyeLink's analog outputs are wired to BNC 11-13 (voltages, not calibrated to the screen).
+  channel_descriptions:
+    eye_x: "EyeLink analog output: horizontal gaze (BNC 11); volts, not calibrated to screen position"
+    eye_y: "EyeLink analog output: vertical gaze (BNC 12); volts, not calibrated to screen position"
+    eye_pupil: "EyeLink analog output: pupil size (BNC 13); volts"
 
   # ---- _coordsystem.json (notebook 04, Section 10.5) ----
   # apply: true writes the description below into _coordsystem.json.
