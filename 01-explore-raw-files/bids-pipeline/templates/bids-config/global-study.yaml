@@ -112,8 +112,8 @@ data:
 #  Which notebooks to run
 # -------------------------------------------------------------------------------------
 #  true = run it. A notebook whose data is turned off above is skipped anyway.
-#  Rules the pipeline adds: if 04 runs, 05 runs too (04 rewrites a file 05 completes),
-#  and 06 (the final BIDS validation) always runs last.
+#  06 (the final BIDS validation) always runs last. If 04 runs, run 05 too (or your own version
+#  of it): 04 rewrites a file 05 completes. The pipeline warns if 04 is chosen without 05.
 #  For one run you can also choose on the command line, e.g. ... sub-01.yaml --steps 04,05
 steps:
   "01": true    # convert the raw cMEG recordings to FIF, screen for bad channels

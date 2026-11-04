@@ -37,9 +37,9 @@ also works, if pytest is installed.)
 | Test | What it makes sure of |
 |---|---|
 | `test_default_plan_runs_everything` | With every step on, all six notebooks are planned. |
-| `test_04_brings_05_and_06_always_runs` | Choosing 04 adds 05; 06 is always added. |
+| `test_06_always_runs_and_04_alone_warns` | 06 is always added; choosing 04 without 05 doesn't add 05 but gives a warning. |
 | `test_missing_data_skips_its_notebooks` | Without eye tracking or MRI (`data:` section), their notebooks are skipped. |
-| `test_inputs_from_notebooks_that_dont_run_must_exist` | `--steps 04` with no FIF files from 01 (and no files from 02, 03) stops the pre-flight check, which says which notebook to add. |
+| `test_inputs_from_notebooks_that_dont_run_must_exist` | `--steps 04,05` with no FIF files from 01 (and no files from 02, 03) stops the pre-flight check, which says which notebook to add. |
 | `test_paths_without_sessions` | The files the runner checks between notebooks, and the Slurm job name, have no `ses-` in a study without sessions. |
 | `test_notebooks_found_by_exact_name` | The six notebooks are found by their exact names; copies with similar names (`04_FIF_to_BIDS_old.ipynb`) are ignored, and a missing notebook is reported with the similar names found. |
 | `test_steps_option` | `--steps 4,5` becomes 04, 05; `07` is rejected. |

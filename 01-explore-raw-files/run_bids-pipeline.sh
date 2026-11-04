@@ -15,7 +15,7 @@
 #  the Slurm log is <session>/reports/slurm-<job id>.log.
 #
 #  Options (after the subject file):
-#      --steps 04,05   run only these notebooks (plus the rules: 04 brings 05, 06 always runs)
+#      --steps 04,05   run only these notebooks (06, the validation, is always added)
 #      --check         only check; don't submit anything
 #      --local         run here and now instead of submitting a job (e.g. in an interactive
 #                      session from salloc); don't do this on the login node

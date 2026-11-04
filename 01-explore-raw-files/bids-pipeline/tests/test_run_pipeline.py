@@ -8,7 +8,7 @@ Uses the same fake study as test_bids_config.py (filled_config()), in a temporar
 
 The tests (see tests/README.md for more):
   test_default_plan_runs_everything      with every step on, all six notebooks are planned
-  test_04_brings_05_and_06_always_runs   choosing 04 adds 05; 06 is always added
+  test_06_always_runs_and_04_alone_warns 06 is always added; 04 without 05 gives a warning
   test_missing_data_skips_its_notebooks  no eye tracking / MRI: their notebooks are skipped
   test_inputs_from_notebooks_that_dont_run_must_exist
                                          --steps 04 without 01's FIF files stops the pre-flight
@@ -47,10 +47,15 @@ def test_default_plan_runs_everything():
     assert _planned(bc.load(filled_config())) == ["01", "02", "03", "04", "05", "06"]
 
 
-def test_04_brings_05_and_06_always_runs():
+def test_06_always_runs_and_04_alone_warns():
     cfg = bc.load(filled_config())
-    assert _planned(cfg, ["04"]) == ["04", "05", "06"]
+    assert _planned(cfg, ["04"]) == ["04", "06"]          # 05 is not added...
     assert _planned(cfg, ["01"]) == ["01", "06"]
+    settings = bc.notebook_settings(cfg, {"edf_file": None, "dicom_template": None})
+    _, warnings, _ = rp.preflight(cfg, rp.plan_steps(cfg, ["04"]), settings, "python3")
+    assert any("05 isn't chosen to run" in w for w in warnings), warnings   # ...but there is a warning
+    _, warnings, _ = rp.preflight(cfg, rp.plan_steps(cfg, ["04", "05"]), settings, "python3")
+    assert not any("05 isn't chosen to run" in w for w in warnings), warnings
 
 
 def test_missing_data_skips_its_notebooks():
@@ -64,7 +69,7 @@ def test_missing_data_skips_its_notebooks():
 
 def test_inputs_from_notebooks_that_dont_run_must_exist():
     cfg = bc.load(filled_config())
-    steps = rp.plan_steps(cfg, ["04"])
+    steps = rp.plan_steps(cfg, ["04", "05"])          # 05 needs 02's files, 04 needs 01's and 03's
     settings = bc.notebook_settings(cfg, {"edf_file": None, "dicom_template": None})
     needs = rp.requirements(cfg, settings)
     missing = [(producer, what) for step in ("04", "05") for producer, what, paths, check in needs[step]
