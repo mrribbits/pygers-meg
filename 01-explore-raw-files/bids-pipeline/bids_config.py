@@ -812,6 +812,12 @@ def notebook_settings(cfg: Config, inputs: dict | None = None, summary_file=None
         "SHOW_TEXT_REPORT": val["show_text_report"],
         "FAIL_ON_ERRORS": val["fail_on_errors"],
         "SUMMARY_FILE": summary_file,
+        # For the Methods text: how notebook 01 screened for bad channels
+        "SCREEN_SEGMENT_S": pr["meg_conversion"]["screen"]["segment_s"],
+        "SCREEN_Z": pr["meg_conversion"]["screen"]["z_threshold"],
+        "SCREEN_FLAT_RATIO": pr["meg_conversion"]["screen"]["flat_ratio"],
+        "SCREEN_MIN_SEGMENTS": pr["meg_conversion"]["screen"]["min_segments"],
+        "FLAT_MARKS_WHOLE_SENSOR": pr["meg_conversion"]["screen"]["flat_marks_whole_sensor"],
     }
 
     # Paths as plain text (YAML has no path type); "_paths" tells each notebook which to turn back
