@@ -58,6 +58,19 @@ Studies without sessions (`study.sessions: false`, `session: null` in each subje
 leave out the `ses-` level everywhere: `sourcedata/sub-01/raw/`, `bids/sub-01/meg/`, and
 file names without `_ses-01`. Below, "session folder" then means `sourcedata/sub-01/`.
 
+Sessions with several runs (`runs:` in the subject file; work in progress on the `runs`
+branch): notebooks 01, 02, 04 and 05 run once per run, in the order 01 run-01, 01 run-02,
+02 run-01, ..., 03, 04 run-01, ..., 06 (`PER_RUN_STEPS` and `expand_runs()` in
+`run_bids-pipeline.py`). Each run has its own settings file (`settings_run-01.yaml`, ...; 03 and
+06 read the first one, their settings being the same in all), its own executed notebooks and
+reports (`04_FIF_to_BIDS_run-02.html`) and its own row on `index.html`. A per-run notebook needs
+its files from the same run (04 run-02 from 01 run-02), so a failure in one run skips only that
+run's later notebooks. `Config.runs` in `bids_config.py` gives a session without `runs:` as a
+single run with run `None`, so both cases go through the same code. Not done yet: notebook 01
+converts and screens the empty room again in every run, notebook 04 rewrites it in every run
+(with that run's bad channels), and behavioral logs (`data.behavioral`) are refused for sessions
+with runs until it's settled how they map to runs.
+
 Exit status: 0 = all chosen notebooks ran; 1 = one failed or was skipped; 2 = pre-flight
 problems.
 

@@ -19,6 +19,13 @@ The tests (see tests/README.md for more):
   test_steps_option                      "4,5" -> 04, 05; "07" is rejected
   test_slurm_options                     sbatch options from global-study.yaml, incl. optional email
   test_lock_is_exclusive_and_released    only one job at a time holds the BIDS dataset lock
+  test_runs_plan                         with runs:, 01/02/04/05 once per run, 03 and 06 once; a run
+                                         without eye tracking skips its 02 and 05
+  test_runs_preflight                    each run's recording and files are checked, and named in
+                                         the messages
+  test_runs_main                         a whole run (fake notebooks): one settings file per run, each
+                                         notebook gets its run's file, a failed 01 run-02 skips only
+                                         04 run-02 and 05 run-02
 """
 from __future__ import annotations
 
@@ -36,7 +43,7 @@ _spec = importlib.util.spec_from_file_location("run_bids_pipeline", HERE.parent 
 rp = importlib.util.module_from_spec(_spec)
 sys.modules["run_bids_pipeline"] = rp
 _spec.loader.exec_module(rp)
-from test_bids_config import filled_config  # noqa: E402
+from test_bids_config import filled_config, with_runs  # noqa: E402
 
 
 def _planned(cfg, chosen=None):
@@ -151,6 +158,94 @@ def test_lock_is_exclusive_and_released():
     b.acquire()
     b.release()
     assert not a.path.exists()
+
+
+def test_runs_plan():
+    cfg = bc.load(with_runs(filled_config()))
+    units = rp.expand_runs(cfg, rp.plan_steps(cfg))
+    assert [u.label for u in units] == ["01 run-01", "01 run-02", "02 run-01", "02 run-02", "03",
+                                        "04 run-01", "04 run-02", "05 run-01", "05 run-02", "06"]
+    assert all(u.status == "planned" for u in units)
+    # A run without eye tracking: its 02 and 05 are skipped
+    cfg = bc.load(with_runs(filled_config(), edf_files=("R1.EDF", None)))
+    status = {u.label: u.status for u in rp.expand_runs(cfg, rp.plan_steps(cfg))}
+    assert status["02 run-02"] == status["05 run-02"] == "skipped" and status["05 run-01"] == "planned"
+    # Without runs: the same six steps as always
+    cfg = bc.load(filled_config())
+    assert [u.label for u in rp.expand_runs(cfg, rp.plan_steps(cfg))] == list(bc.NOTEBOOKS)
+
+
+def _by_run(cfg):
+    inputs = bc.find_inputs(cfg)
+    return {r: bc.notebook_settings(cfg, inputs, run=r) for r in cfg.run_labels}
+
+
+def test_runs_preflight():
+    cfg = bc.load(with_runs(filled_config()))
+    by_run = _by_run(cfg)
+    first = by_run["01"]
+    # 04 alone: each run needs its own FIF files from 01, named with the run
+    problems, _, _ = rp.preflight(cfg, rp.plan_steps(cfg, ["04", "05"]), first, "python3", by_run)
+    assert any("Notebook 04 (run 02) needs the FIF files" in p and "_run-02_meg.fif" in p for p in problems), problems
+    assert any("Notebook 05 (run 01) needs the eye2bids files" in p for p in problems), problems
+    # 01: each run's recording is looked for (none exist in the fake study)
+    problems, _, _ = rp.preflight(cfg, rp.plan_steps(cfg, ["01"]), first, "python3", by_run)
+    assert any("runs: run '02': task_prefix '20260929_142000'" in p for p in problems), problems
+    # Behavioral logs with runs: not supported yet, said clearly
+    cfg.study["data"]["behavioral"] = True
+    problems, _, _ = rp.preflight(cfg, rp.plan_steps(cfg, ["04"]), first, "python3", by_run)
+    assert any("several runs aren't supported yet" in p for p in problems), problems
+
+
+def test_runs_main():
+    import yaml
+    subject_file = with_runs(filled_config())
+    cfg = bc.load(subject_file)
+    cfg_study = subject_file.parent.parent / "global-study.yaml"
+    # No MRI and no behavioral logs, so the fake notebooks only need to make MEG and eye files
+    text = cfg_study.read_text(encoding="utf-8").replace("  mri: true", "  mri: false").replace("  behavioral: true", "  behavioral: false")
+    cfg_study.write_text(text, encoding="utf-8")
+    calls = []
+
+    def fake_run_notebook(step, settings_file, run_dir, kernel, hide_code):
+        # What each notebook would make, from the settings it was given
+        nb = yaml.safe_load(Path(settings_file).read_text())[step.key]
+        calls.append((step.label, Path(settings_file).name, nb.get("RUN")))
+        if step.label == "01 run-02":                      # this one fails
+            step.status, step.reason = "failed", "RuntimeError: cmeg2fif failed"
+            return
+        if step.key == "01":
+            for f in (nb["OUT_DIR"] + "/sub-01_ses-01_task-oddballftcued_run-" + nb["RUN"] + "_meg.fif",
+                      nb["OUT_DIR"] + "/sub-01_ses-01_task-noise_meg.fif"):
+                Path(f).parent.mkdir(parents=True, exist_ok=True)
+                Path(f).write_bytes(b"x")
+        if step.key == "02":
+            out = Path(nb["OUT_DIR"]) / f"sub-01_ses-01_task-oddballftcued_run-{nb['RUN']}_recording-eye1_physio.tsv.gz"
+            out.parent.mkdir(parents=True, exist_ok=True)
+            out.write_bytes(b"x")
+        if step.key == "04":
+            meg = Path(nb["BIDS_ROOT"]) / "sub-01" / "ses-01" / "meg"
+            meg.mkdir(parents=True, exist_ok=True)
+            (meg / f"sub-01_ses-01_task-oddballftcued_run-{nb['RUN']}_meg.fif").write_bytes(b"x")
+            (Path(nb["BIDS_ROOT"]) / "dataset_description.json").write_text("{}")
+        step.status = "ok"
+
+    saved = (rp.preflight, rp.run_notebook, rp.find_notebooks)
+    rp.preflight = lambda *a, **k: ([], [], [])
+    rp.run_notebook = fake_run_notebook
+    rp.find_notebooks = lambda folder: {k: Path(folder) / n for k, n in bc.NOTEBOOK_FILES.items()}
+    try:
+        status = rp.main([str(subject_file), "--steps", "01,02,04,05"])
+    finally:
+        rp.preflight, rp.run_notebook, rp.find_notebooks = saved
+    assert status == 1                                     # 01 run-02 failed
+    ran = [c[0] for c in calls]
+    assert ran == ["01 run-01", "01 run-02", "02 run-01", "02 run-02", "04 run-01", "05 run-01", "06"], ran
+    assert all(f == (f"settings_run-{r}.yaml" if r else "settings_run-01.yaml") for _, f, r in calls), calls
+    run_dir = max((cfg.session_dir / "reports").glob("2*"))
+    assert (run_dir / "settings_run-01.yaml").is_file() and (run_dir / "settings_run-02.yaml").is_file()
+    index = (run_dir / "index.html").read_text()
+    assert "04 run-02" in index and "notebook 01 run-02 failed" in index
 
 
 if __name__ == "__main__":

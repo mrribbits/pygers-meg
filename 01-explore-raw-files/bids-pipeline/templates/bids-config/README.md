@@ -121,6 +121,30 @@ data then go in `sourcedata/sub-01/raw/` (no `ses-01/` level). Choose this only 
 participant comes once: adding sessions later means renaming every file already in `bids/`
 and `sourcedata/`.
 
+## Sessions with several runs
+
+*In development (the `runs` branch): not ready for real data yet.*
+
+If a session has several runs of the task, each its own cMEG recording (and its own .edf),
+list them in the subject file instead of giving one `cmeg.task_prefix` and `eye.edf_file`:
+
+```yaml
+cmeg:
+  emptyroom_prefix: "20260929_125813"    # shared by every run
+runs:
+  - run: "01"
+    task_prefix: "20260929_134022"
+    edf_file: "MP0929R1.EDF"             # null if this run has no eye tracking
+  - run: "02"
+    task_prefix: "20260929_141510"
+    edf_file: "MP0929R2.EDF"
+```
+
+Each run keeps its own files, with a `run-` label (`sub-01_ses-01_task-..._run-01_meg.fif`),
+as BIDS expects: the runs are not joined. The empty room and the head digitization are shared.
+Notebooks 01, 02, 04 and 05 run once per run; the reports and `index.html` show each run
+separately. Behavioral logs are not supported with runs yet (set `data.behavioral: false`).
+
 ## Placeholders in texts
 
 These texts can contain placeholders, filled in by notebook 04 when it runs:

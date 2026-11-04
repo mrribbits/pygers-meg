@@ -31,6 +31,8 @@ also works, if pytest is installed.)
 | `test_mistakes_are_caught` | Typical mistakes are reported: a misspelled setting, `overwrite: maybe`, `subject: "sub-01"`, an event without a description, a sync name that isn't an event, an undescribed participant column, an unknown `{placeholder}`, a bad CHANGES date, sourcedata inside bids, a missing MRI container in a study with MRI. |
 | `test_study_without_sessions` | With `sessions: false`, no setting or path contains `ses-`. |
 | `test_sessions_must_match_the_study` | A subject file whose `session:` disagrees with the study's `sessions:` setting is reported. |
+| `test_runs` | A session with `runs:` gets per-run settings (its recording, its .edf, file names with `run-NN`), and 03 and 06 get the same settings for every run. |
+| `test_run_mistakes_are_caught` | `runs:` mistakes are reported: both `cmeg.task_prefix` and `runs:`, neither, a run listed twice, `edf_file: "auto"` or no `edf_file` in a run. |
 
 ## test_run_pipeline.py: the runner's decisions
 
@@ -45,6 +47,9 @@ also works, if pytest is installed.)
 | `test_steps_option` | `--steps 4,5` becomes 04, 05; `07` is rejected. |
 | `test_slurm_options` | The sbatch options come from `global-study.yaml` (time, memory, CPUs, partition), and the email options only when `mail_user` is set; bad email settings are reported. |
 | `test_lock_is_exclusive_and_released` | While one job holds the lock on the BIDS dataset, a second can't take it; once released, it can. |
+| `test_runs_plan` | With `runs:`, notebooks 01, 02, 04 and 05 are planned once per run and 03 and 06 once; a run with `edf_file: null` skips its 02 and 05. Without `runs:`, the plan is the usual six notebooks. |
+| `test_runs_preflight` | With `runs:`, each run's recording and files are checked, and the messages name the run. Behavioral logs with runs are refused (not supported yet). |
+| `test_runs_main` | A whole run with fake notebooks: one settings file per run, each notebook gets its run's file, and a failed 01 run-02 skips only 04 run-02 and 05 run-02. |
 
 ## When a test fails
 

@@ -22,6 +22,11 @@ What it does:
      each, index.html (what ran, how long, what failed, the validator's counts), the
      settings file, a copy of the configuration files, and the log.
 
+A session with several runs (runs: in the subject file) runs notebooks 01, 02, 04 and 05 once
+per run, each with that run's settings file (settings_run-01.yaml, ...), in the order
+01 run-01, 01 run-02, 02 run-01, ..., 03, 04 run-01, ...; 03 and 06 run once. A run without
+eye tracking (edf_file: null) skips its 02 and 05.
+
 The steps that write into the BIDS dataset (03-06) take a lock on it first, so two jobs
 for different subjects don't write the shared files (participants.tsv, the MRI naming
 rules, ...) at the same time; the second one waits.
@@ -98,6 +103,9 @@ STEP_DATA = {"02": "eye_tracking", "03": "mri", "05": "eye_tracking"}
 # Notebooks that write into (or read the whole of) the BIDS dataset or the shared
 # sourcedata/code/heuristic.py: they run under the lock (see DatasetLock below).
 LOCKED_STEPS = {"03", "04", "05", "06"}
+# Notebooks that run once per run in a session with several runs (runs: in the subject file).
+# 03 (the MRI) and 06 (the validation of the whole dataset) run once per session.
+PER_RUN_STEPS = {"01", "02", "04", "05"}
 # The oldest cMEG2FIF version the pipeline accepts, as (major, minor): 2.16, the version pinned in
 # scotty-environment.yml.
 MIN_CMEG2FIF = (2, 16)
@@ -212,6 +220,12 @@ class Step:
     seconds: float = 0.0              # how long it ran
     html: Path | None = None          # its HTML report, once made
     executed: Path | None = None      # the executed copy of the notebook (with all outputs)
+    run: str | None = None            # the run, e.g. "02", in a session with runs: (else None)
+
+    @property
+    def label(self) -> str:
+        """e.g. "04", or "04 run-02" in a session with runs (for the log and index.html)."""
+        return self.key + (f" run-{self.run}" if self.run else "")
 
 
 def find_notebooks(folder: Path = NOTEBOOKS_DIR) -> dict:
@@ -263,6 +277,30 @@ def plan_steps(cfg: bc.Config, chosen: list | None = None) -> dict:
     return steps
 
 
+def expand_runs(cfg: bc.Config, steps: dict) -> list:
+    """The plan as a list of Steps, one per notebook and run, in the order they run.
+
+    steps: plan_steps()'s {"01": Step, ...}. Without runs: in the subject file this is simply
+    those six Steps (each with run None). With runs, 01, 02, 04 and 05 appear once per run
+    (01 run-01, 01 run-02, 02 run-01, ...) and 03 and 06 once. A run without eye tracking
+    (edf_file: null) has its 02 and 05 skipped."""
+    units = []
+    for k, step in steps.items():                         # in order: 01 ... 06
+        for run in (cfg.run_labels if k in PER_RUN_STEPS else [None]):
+            unit = Step(k, notebook=step.notebook, status=step.status, reason=step.reason, run=run)
+            if (unit.status == "planned" and k in ("02", "05") and run is not None
+                    and cfg.run_entry(run)["edf_file"] is None):
+                unit.status, unit.reason = "skipped", "this run has no eye tracking (edf_file: null)"
+            units.append(unit)
+    return units
+
+
+def _settings_for(settings_by_run: dict, run: str | None) -> dict:
+    """The settings of this run; for 03 and 06 (run None) in a session with runs, the first run's
+    (their own settings are the same in every run's file)."""
+    return settings_by_run[run] if run in settings_by_run else next(iter(settings_by_run.values()))
+
+
 def _bad_channels_auto(cfg: bc.Config) -> bool:
     """True if the subject file uses notebook 01's bad-channel candidates ("auto", or a
     {"auto": true, ...} entry), so notebook 04 needs the candidates file."""
@@ -276,10 +314,13 @@ def requirements(cfg: bc.Config, settings: dict) -> dict:
 
     For example, 04 needs the FIF files that 01 makes. This is used twice: before the run
     (if 01 won't run now, its FIF files must already exist), and during the run (if 01
-    failed, 04 is skipped)."""
+    failed, 04 is skipped).
+
+    settings: one run's settings (in a session with runs, the producer of a per-run notebook's
+    files is the same notebook for the same run: 04 run-02 needs 01 run-02's FIF files)."""
     s04, s05 = settings["04"], settings["05"]     # the settings notebooks 04 and 05 will get
     S = cfg.session_dir                           # sourcedata/sub-XX/ses-YY
-    task = cfg.study["study"]["task"]
+    run = s04["RUN"]                              # this run's label, or None
     data = cfg.study["data"]
     # Two ways to check. "lambda" makes a small function in one line:
     #   exists:    every listed path exists
@@ -301,10 +342,10 @@ def requirements(cfg: bc.Config, settings: dict) -> dict:
     # 05 needs 02's eye-tracking files ...
     if data["eye_tracking"]:
         req["05"].append(("02", "the eye2bids files",
-                          [Path(s05["EYE2BIDS_DIR"]) / f"{cfg.stem}_task-{task}*_physio.tsv.gz"], any_match))
+                          [Path(s05["EYE2BIDS_DIR"]) / f"{cfg.task_stem(run)}*_physio.tsv.gz"], any_match))
     # ... and the MEG recording 04 wrote into the BIDS dataset
     req["05"].append(("04", "the MEG recording in the BIDS dataset",
-                      [cfg.bids_dir() / "meg" / f"{cfg.stem}_task-{task}*_meg.fif"],
+                      [cfg.bids_dir() / "meg" / f"{cfg.task_stem(run)}*_meg.fif"],
                       any_match))
     # 06 needs a BIDS dataset to validate (any subject's: dataset_description.json is enough)
     req["06"].append(("04", "a BIDS dataset", [cfg.bids_root / "dataset_description.json"], exists))
@@ -339,15 +380,28 @@ def _container_problems(name: str, sif, runtime: str | None) -> list:
     return []
 
 
-def preflight(cfg: bc.Config, steps: dict, settings: dict, kernel: str) -> tuple[list, list, list]:
+def preflight(cfg: bc.Config, steps: dict, settings: dict, kernel: str,
+              settings_by_run: dict | None = None) -> tuple[list, list, list]:
     """(problems, warnings, facts). Problems stop the run; facts are what was found.
 
     Only checks what the notebooks chosen to run need: e.g. the containers only if 03 or
-    06 runs."""
+    06 runs.
+
+    settings: the (first) run's settings. settings_by_run: {run: settings} for every run of a
+    session with runs: (not needed without runs)."""
     problems, warnings, facts = [], [], []
-    run = {k for k, s in steps.items() if s.status == "planned"}   # the notebooks that will run
+    if settings_by_run is None:
+        settings_by_run = {settings["04"]["RUN"]: settings}
+    units = expand_runs(cfg, steps)                                 # one per notebook and run
+    planned = {(u.key, u.run) for u in units if u.status == "planned"}
+    run = {k for k, _ in planned}                                   # the notebooks that will run (in some run)
+    runs = cfg.run_labels                                           # [None], or ["01", "02", ...]
     raw = cfg.raw_dir                                               # sourcedata/sub-XX/ses-YY/raw
     sw = cfg.study["software"]                                      # your containers and edf2asc
+
+    def who(key, r):
+        """e.g. "Notebook 04", or "Notebook 04 (run 02)"."""
+        return f"Notebook {key}" + (f" (run {r})" if r else "")
 
     # ---- Python packages and the notebook kernel ----
     # {name to import: name to show}. Every run needs papermill (runs the notebooks),
@@ -389,14 +443,19 @@ def preflight(cfg: bc.Config, steps: dict, settings: dict, kernel: str) -> tuple
         # The recordings that ARE there (prefixes of the <prefix>_cMEG_Data folders), to
         # list in the message if the subject file names one that isn't
         have = sorted(p.name[:-len("_cMEG_Data")] for p in cmeg_dir.glob("*_cMEG_Data")) if cmeg_dir.is_dir() else []
-        for what, prefix in [("emptyroom_prefix", cfg.subject["cmeg"]["emptyroom_prefix"]),
-                             ("task_prefix", cfg.subject["cmeg"]["task_prefix"])]:
+        # The empty room (shared by every run) and each run's task recording
+        recordings = [("cmeg.emptyroom_prefix", cfg.subject["cmeg"]["emptyroom_prefix"])]
+        for entry in cfg.runs:
+            if ("01", entry["run"]) in planned:
+                where = f"runs: run {entry['run']!r}: task_prefix" if entry["run"] else "cmeg.task_prefix"
+                recordings.append((where, entry["task_prefix"]))
+        for what, prefix in recordings:
             # Notebook 01 converts <prefix>_cMEG_Data/<prefix>_meg_001.cMEG
             f = cmeg_dir / f"{prefix}_cMEG_Data" / f"{prefix}_meg_001.cMEG"
             if f.is_file():
                 facts.append(f"cMEG recording ({what}): {f.parent.name}")
             else:
-                problems.append(f"{cfg.subject_file.name}: cmeg.{what} {prefix!r}: {f} not found. "
+                problems.append(f"{cfg.subject_file.name}: {what} {prefix!r}: {f} not found. "
                                 f"Recordings in {cmeg_dir}: {have or 'none'}")
         # The two EinScan files (head digitization) named in the subject file
         for name in ("XFM_FILE", "XYZ_FILE"):
@@ -423,7 +482,10 @@ def preflight(cfg: bc.Config, steps: dict, settings: dict, kernel: str) -> tuple
 
     # ---- notebook 02: the EDF (found by bids_config.find_inputs) and edf2asc ----
     if "02" in run:
-        facts.append(f"EyeLink file: {Path(settings['02']['EDF_FILE']).name}")
+        for r in runs:
+            if ("02", r) in planned:
+                edf = _settings_for(settings_by_run, r)["02"]["EDF_FILE"]
+                facts.append(f"EyeLink file{f' (run {r})' if r else ''}: {Path(edf).name}")
         # edf2asc (SR Research's EDF reader, used by eye2bids): in the folder global-study.yaml
         # names, or on the PATH. os.X_OK = "can be run as a program".
         if sw["edf2asc_dir"]:
@@ -451,7 +513,11 @@ def preflight(cfg: bc.Config, steps: dict, settings: dict, kernel: str) -> tuple
             facts.append(f"DICOM files: {settings['03']['DICOM_TEMPLATE']}")
 
     # ---- notebook 04: the behavioral logs ----
-    if "04" in run and cfg.study["data"]["behavioral"]:
+    if "04" in run and cfg.study["data"]["behavioral"] and runs != [None]:
+        # Notebook 04 would copy every log into each run; how logs map to runs isn't settled yet
+        problems.append("Behavioral logs in a session with several runs aren't supported yet: set "
+                        "data.behavioral: false in global-study.yaml for now")
+    elif "04" in run and cfg.study["data"]["behavioral"]:
         task = cfg.study["study"]["task"]
         behav = raw / "behav"
         # Notebook 04 converts every <anything>task-<task>_<table>.csv
@@ -464,18 +530,20 @@ def preflight(cfg: bc.Config, steps: dict, settings: dict, kernel: str) -> tuple
 
     # ---- what the chosen notebooks need from notebooks that don't run now ----
     # E.g. "--steps 04": 01 won't run, so its FIF files must already be there.
-    for step_key, needs in requirements(cfg, settings).items():
-        if step_key not in run:
-            continue                       # this notebook won't run: it needs nothing
+    # In a session with runs, each run is checked with its own files.
+    for step_key, r in [(u.key, u.run) for u in units if u.status == "planned"]:
+        needs = requirements(cfg, _settings_for(settings_by_run, r))[step_key]
         for producer, what, paths, check in needs:
-            if producer in run:
+            # The notebook that makes them for this run (03 runs once: run None)
+            producer_run = r if producer in PER_RUN_STEPS else None
+            if (producer, producer_run) in planned:
                 continue                   # it runs first and makes the files; checked later
             # Skipped because the study has no such data (e.g. no MRI): nothing to need
             if steps[producer].status == "skipped" and producer in STEP_DATA \
                     and not cfg.study["data"][STEP_DATA[producer]]:
                 continue
             if not check(paths):
-                msg = (f"Notebook {step_key} needs {what} from notebook {producer}, which isn't chosen "
+                msg = (f"{who(step_key, r)} needs {what} from notebook {producer}, which isn't chosen "
                        f"to run, and they aren't there (not found: {paths[0]})")
                 if step_key == "06":
                     # No dataset to validate yet (e.g. a run of 01 only): not a problem
@@ -489,7 +557,7 @@ def preflight(cfg: bc.Config, steps: dict, settings: dict, kernel: str) -> tuple
                         "eye tracker's screen information, and 05 isn't chosen to run. Run 05 (or your own "
                         "version of it) afterwards; until then the BIDS validator reports "
                         "INCOMPLETE_STIMULUS_PRESENTATION.")
-    warnings += staleness_warnings(cfg, steps, settings)
+    warnings += staleness_warnings(cfg, steps, settings, settings_by_run)
 
     # ---- the output folders can be written ----
     # The session folder (reports, staging folders) and the BIDS dataset (or, if it doesn't
@@ -502,12 +570,15 @@ def preflight(cfg: bc.Config, steps: dict, settings: dict, kernel: str) -> tuple
     return problems, warnings, facts
 
 
-def staleness_warnings(cfg: bc.Config, steps: dict, settings: dict) -> list:
+def staleness_warnings(cfg: bc.Config, steps: dict, settings: dict, settings_by_run: dict | None = None) -> list:
     """Notebooks that won't run now whose output is older than their input (the output may be
     out of date).
 
     E.g. you replaced a raw recording but run only 04: 04 would use the FIF files 01 made
-    from the old recording. This only warns; the run goes on."""
+    from the old recording. This only warns; the run goes on. In a session with runs, each
+    run's files are compared."""
+    if settings_by_run is None:
+        settings_by_run = {settings["04"]["RUN"]: settings}
     run = {k for k, s in steps.items() if s.status == "planned"}
     S, raw = cfg.session_dir, cfg.raw_dir
     out = []
@@ -523,19 +594,24 @@ def staleness_warnings(cfg: bc.Config, steps: dict, settings: dict) -> list:
             out.append(f"Notebook {producer}'s output ({Path(outputs[0]).name}, ...) is older than its input "
                        f"({Path(inputs[0]).name}, ...): it may be out of date. {advice}")
 
-    if run & {"04"}:
-        # 01: the raw recordings and EinScan files vs. the FIF files
-        cm = cfg.subject["cmeg"]
-        check("01", [raw / "cMEG" / f"{cm['task_prefix']}_cMEG_Data", raw / "cMEG" / f"{cm['emptyroom_prefix']}_cMEG_Data",
-                     settings["01"]["XFM_FILE"], settings["01"]["XYZ_FILE"]],
-              [settings["04"]["FIF_DATA"], settings["04"]["FIF_EMPTYROOM"]],
-              "Run 01 again (with options.force_reconvert: true).")
-        # 03: the DICOMs vs. the converted MRI
-        if cfg.study["data"]["mri"]:
-            check("03", [raw / "mri"], [cfg.bids_dir(S / "mri-staging")], "Run 03 again.")
-    # 02: the .edf vs. the eye2bids files
-    if run & {"05"} and cfg.study["data"]["eye_tracking"] and settings["02"]["EDF_FILE"]:
-        check("02", [settings["02"]["EDF_FILE"]], [S / "eye-staging"], "Run 02 again.")
+    for entry in cfg.runs:
+        r = entry["run"]
+        rs = _settings_for(settings_by_run, r)
+        again = f" (run {r})" if r else ""
+        if run & {"04"}:
+            # 01: the raw recordings and EinScan files vs. the FIF files
+            cm = cfg.subject["cmeg"]
+            check("01", [raw / "cMEG" / f"{entry['task_prefix']}_cMEG_Data", raw / "cMEG" / f"{cm['emptyroom_prefix']}_cMEG_Data",
+                         rs["01"]["XFM_FILE"], rs["01"]["XYZ_FILE"]],
+                  [rs["04"]["FIF_DATA"], rs["04"]["FIF_EMPTYROOM"]],
+                  f"Run 01{again} again (with options.force_reconvert: true).")
+        # 02: the .edf vs. the eye2bids files (this run's)
+        if run & {"05"} and cfg.study["data"]["eye_tracking"] and rs["02"]["EDF_FILE"]:
+            check("02", [rs["02"]["EDF_FILE"]],
+                  sorted((S / "eye-staging").glob(f"{cfg.task_stem(r)}*")) or [S / "eye-staging"], f"Run 02{again} again.")
+    # 03: the DICOMs vs. the converted MRI (once per session)
+    if run & {"04"} and cfg.study["data"]["mri"]:
+        check("03", [raw / "mri"], [cfg.bids_dir(S / "mri-staging")], "Run 03 again.")
     return out
 
 
@@ -715,10 +791,11 @@ def run_notebook(step: Step, settings_file: Path, run_dir: Path, kernel: str, hi
     recorded as "failed" and the pipeline goes on."""
     import papermill as pm
 
-    # The executed copy goes into the run folder, under the notebook's own name
-    step.executed = run_dir / step.notebook.name
+    # The executed copy goes into the run folder, under the notebook's own name (plus the run,
+    # e.g. 04_FIF_to_BIDS_run-02.ipynb, in a session with runs)
+    step.executed = run_dir / (step.notebook.stem + (f"_run-{step.run}" if step.run else "") + ".ipynb")
     t0 = time.monotonic()                 # start the clock
-    log.info(f"===== Notebook {step.key}: {step.notebook.name} =====")
+    log.info(f"===== Notebook {step.label}: {step.notebook.name} =====")
     try:
         # papermill runs every cell of the notebook, top to bottom, and saves a copy with
         # all outputs. parameters: puts "config_file = <the settings file>" into a new cell
@@ -741,18 +818,18 @@ def run_notebook(step: Step, settings_file: Path, run_dir: Path, kernel: str, hi
         step.reason = f"{type(err).__name__}: {err}"[:2000]
     step.seconds = time.monotonic() - t0
     if step.status == "ok":
-        log.info(f"Notebook {step.key} finished in {_duration(step.seconds)}")
+        log.info(f"Notebook {step.label} finished in {_duration(step.seconds)}")
     else:
-        log.error(f"Notebook {step.key} FAILED after {_duration(step.seconds)}: {step.reason}")
+        log.error(f"Notebook {step.label} FAILED after {_duration(step.seconds)}: {step.reason}")
     # Make the HTML report, also of a failed notebook (that's when it's most useful). If
     # making it fails, say so, but carry on.
     if step.executed.is_file():
         try:
             step.html = step.executed.with_suffix(".html")
-            export_html(step.executed, step.html, hide_code, f"{step.key}: {STEP_NAMES[step.key]}")
+            export_html(step.executed, step.html, hide_code, f"{step.label}: {STEP_NAMES[step.key]}")
         except Exception as err:
             step.html = None
-            log.error(f"Could not make the HTML report of notebook {step.key}: {err}")
+            log.error(f"Could not make the HTML report of notebook {step.label}: {err}")
 
 
 # =====================================================================================
@@ -767,13 +844,15 @@ STATUS_TEXT = {"ok": "OK", "failed": "Failed", "skipped": "Skipped", "planned": 
 STATUS_COLOR = {"ok": "#15803d", "failed": "#b91c1c", "skipped": "#6b7280", "planned": "#b45309"}
 
 
-def write_index(path: Path, cfg: bc.Config, steps: dict, info: dict, warnings: list, validator: dict | None):
-    """Write index.html. info: {label: value} for the "This run" table; validator: the
-    error and warning counts notebook 06 saved (None before 06 has run)."""
+def write_index(path: Path, cfg: bc.Config, units: list, info: dict, warnings: list, validator: dict | None):
+    """Write index.html. units: expand_runs()'s Steps (one row each); info: {label: value} for the
+    "This run" table; validator: the error and warning counts notebook 06 saved (None before 06
+    has run)."""
     e = html.escape            # short name: makes text safe inside the page (e.g. "<" -> "&lt;")
     rows = []
-    for k, s in steps.items():
-        name = STEP_NAMES[k]
+    for s in units:
+        k = s.key
+        name = STEP_NAMES[k] + (f" (run {s.run})" if s.run else "")
         # Link to the notebook's report if there is one
         link = f'<a href="{e(s.html.name)}">{e(name)}</a>' if s.html else e(name)
         detail = e(s.reason)
@@ -781,13 +860,17 @@ def write_index(path: Path, cfg: bc.Config, steps: dict, info: dict, warnings: l
         if k == "06" and validator:
             detail = (f"{validator.get('errors', '?')} error(s), {validator.get('warnings', '?')} warning(s) "
                       f"(BIDS validator {e(str(validator.get('validator', '')))})") + (f"<br>{detail}" if detail else "")
-        rows.append(f"<tr><td>{k}</td><td>{link}</td>"
+        rows.append(f"<tr><td>{e(s.label)}</td><td>{link}</td>"
                     f'<td style="color:{STATUS_COLOR[s.status]};font-weight:600">{STATUS_TEXT[s.status]}</td>'
                     f"<td>{_duration(s.seconds) if s.status in ('ok', 'failed') else ''}</td>"
                     f'<td class="detail">{detail}</td></tr>')
     info_rows = "".join(f"<tr><th>{e(a)}</th><td>{e(str(b))}</td></tr>" for a, b in info.items())
     warn = ("<h2>Warnings</h2><ul>" + "".join(f"<li>{e(w)}</li>" for w in warnings) + "</ul>") if warnings else ""
     title = f"BIDS pipeline: {cfg.stem}_task-{cfg.study['study']['task']}"
+    runs = [r for r in cfg.run_labels if r]
+    if runs:
+        title += f" (runs {', '.join(runs)})"
+    settings_links = ", ".join(f'<a href="{n}">{n}</a>' for n in _settings_names(cfg).values())
     # The page itself. In this f-string, {name} inserts a value and {{ }} are literal braces
     # (needed in the CSS).
     path.write_text(f"""<!doctype html>
@@ -809,8 +892,7 @@ def write_index(path: Path, cfg: bc.Config, steps: dict, info: dict, warnings: l
 <h2>This run</h2>
 <table class="info">{info_rows}</table>
 <p>Also in this folder: the executed notebooks (.ipynb), <a href="pipeline.log">pipeline.log</a>,
-<a href="settings.yaml">settings.yaml</a> (what each notebook received) and config/ (a copy of the
-configuration files).</p>
+{settings_links} (what each notebook received) and config/ (a copy of the configuration files).</p>
 </body></html>
 """, encoding="utf-8")
 
@@ -818,6 +900,11 @@ configuration files).</p>
 # =====================================================================================
 #  Main
 # =====================================================================================
+
+def _settings_names(cfg: bc.Config) -> dict:
+    """{run: settings file name}: settings.yaml without runs, settings_run-01.yaml, ... with runs."""
+    return {r: (f"settings_run-{r}.yaml" if r else "settings.yaml") for r in cfg.run_labels}
+
 
 def _parse_steps(text: str) -> list:
     """Read --steps, e.g. "4,5" or "04,05" -> ["04", "05"]. Anything else is an error."""
@@ -977,7 +1064,7 @@ def main(argv=None) -> int:
     try:
         inputs = bc.find_inputs(look)
     except bc.ConfigError as err:
-        inputs, problems = {"edf_file": None, "dicom_template": None}, err.problems
+        inputs, problems = {"edf_file": None, "edf_files": {}, "dicom_template": None}, err.problems
     try:
         notebooks = find_notebooks(args.notebooks)
         for k, s in steps.items():
@@ -992,12 +1079,18 @@ def main(argv=None) -> int:
     stamp = started.strftime("%Y%m%d-%H%M%S")
     run_dir = cfg.session_dir / "reports" / stamp
     summary_file = run_dir / "06_validator_summary.json"
-    # The exact settings each notebook will receive ({"01": {...}, ..., "06": {...}})
-    settings = bc.notebook_settings(cfg, inputs, summary_file=str(summary_file))
+    # The exact settings each notebook will receive ({"01": {...}, ..., "06": {...}}), for each
+    # run ({None: ...} without runs:, {"01": ..., "02": ...} with)
+    settings_by_run = {r: bc.notebook_settings(cfg, inputs, summary_file=str(summary_file), run=r)
+                       for r in cfg.run_labels}
+    settings = next(iter(settings_by_run.values()))     # the first run's
+    # One Step per notebook and run, in the order they run (see expand_runs)
+    units = expand_runs(cfg, steps)
+    planned_units = {(u.key, u.run) for u in units if u.status == "planned"}
 
     # ---- 5. Pre-flight checks (only if everything so far was found) ----
     if not problems:
-        more, warnings, facts = preflight(cfg, steps, settings, args.kernel)
+        more, warnings, facts = preflight(cfg, steps, settings, args.kernel, settings_by_run)
         problems += more
         # "EDIT ME" left in the dataset description or text/: a reminder, not a stop
         warnings += [f"Fill in before sharing the dataset: {t}" for t in bc.publication_todos(cfg)]
@@ -1005,10 +1098,12 @@ def main(argv=None) -> int:
         warnings, facts = [], []
 
     # Show the plan and what was found, then any problems
-    log.info(f"Configuration: {cfg.subject_file} ({cfg.label}, task-{cfg.study['study']['task']})")
-    for k, s in steps.items():
-        log.info(f"  {k} {'run ' if s.status == 'planned' else 'skip'}  {STEP_NAMES[k]}"
-                 + (f"  [{s.reason}]" if s.reason else ""))
+    runs = [r for r in cfg.run_labels if r]
+    log.info(f"Configuration: {cfg.subject_file} ({cfg.label}, task-{cfg.study['study']['task']}"
+             + (f", runs {', '.join(runs)}" if runs else "") + ")")
+    for u in units:
+        log.info(f"  {u.label:9s} {'run ' if u.status == 'planned' else 'skip'}  {STEP_NAMES[u.key]}"
+                 + (f"  [{u.reason}]" if u.reason else ""))
     for f in facts:
         log.info(f"  found: {f}")
     for w in warnings:
@@ -1026,7 +1121,8 @@ def main(argv=None) -> int:
     # exist_ok=False: stop if it already exists (two runs started in the same second)
     run_dir.mkdir(parents=True, exist_ok=False)
     _setup_logging(run_dir / "pipeline.log")      # from now on, messages also go to the file
-    settings_file = bc.write_settings(settings, run_dir / "settings.yaml")
+    # One settings file per run (settings.yaml without runs:)
+    settings_files = {r: bc.write_settings(settings_by_run[r], run_dir / n) for r, n in _settings_names(cfg).items()}
     _copy_config(cfg, run_dir / "config")
     # reports/latest: a shortcut ("symbolic link") to the newest run folder. Replaced each
     # run; if the file system doesn't allow it, there's simply no shortcut.
@@ -1049,40 +1145,42 @@ def main(argv=None) -> int:
     }
     log.info(f"Reports and logs: {run_dir}")
     hide_code = cfg.study["report"]["hide_code"]
-    needs = requirements(cfg, settings)
     lock = DatasetLock(cfg.bids_root)
     index = run_dir / "index.html"
-    write_index(index, cfg, steps, info, warnings, None)    # the first version: all "Not run"
+    write_index(index, cfg, units, info, warnings, None)    # the first version: all "Not run"
+    unit_of = {(u.key, u.run): u for u in units}            # find a notebook's Step for a run
 
     # ---- 7. Run the notebooks, in order ----
     # try/finally: whatever happens inside (even an unexpected error), the "finally" part
     # runs, so the lock is always given back.
     try:
-        for k in run_keys:
-            step = steps[k]
+        for step in [u for u in units if u.status == "planned"]:
+            k, r = step.key, step.run
             # Skip it if a notebook it needs failed or was skipped in this run, or its input
-            # is missing. "blocked" holds the reason, or None if it can run.
+            # is missing. "blocked" holds the reason, or None if it can run. In a session with
+            # runs, a per-run notebook needs the same run's files (04 run-02 needs 01 run-02's).
             blocked = None
-            for producer, what, paths, check in needs[k]:
-                p = steps[producer]
+            for producer, what, paths, check in requirements(cfg, _settings_for(settings_by_run, r))[k]:
+                producer_key = (producer, r if producer in PER_RUN_STEPS else None)
+                p = unit_of.get(producer_key)
                 # 06 checks the whole dataset, so it runs even when 04 failed for this session
-                if producer in run_keys and p.status != "ok" and k != "06":
-                    blocked = f"notebook {producer} {STEP_TEXT_PAST[p.status]}, and this one needs {what} from it"
+                if producer_key in planned_units and p.status != "ok" and k != "06":
+                    blocked = f"notebook {p.label} {STEP_TEXT_PAST[p.status]}, and this one needs {what} from it"
                 elif not check(paths):
                     blocked = f"needs {what} from notebook {producer}, not found: {paths[0]}"
                 if blocked:
                     break
             if blocked:
                 step.status, step.reason = "skipped", blocked
-                log.warning(f"Skipping notebook {k}: {blocked}")
-                write_index(index, cfg, steps, info, warnings, None)
+                log.warning(f"Skipping notebook {step.label}: {blocked}")
+                write_index(index, cfg, units, info, warnings, None)
                 continue                          # on to the next notebook
             # Before the first notebook that writes shared files (03-06), take the lock;
             # it's kept until the end
             if k in LOCKED_STEPS and not lock.held:
                 lock.acquire()
-            run_notebook(step, settings_file, run_dir, args.kernel, hide_code)
-            write_index(index, cfg, steps, info, warnings, None)   # show the progress
+            run_notebook(step, _settings_for(settings_files, r), run_dir, args.kernel, hide_code)
+            write_index(index, cfg, units, info, warnings, None)   # show the progress
     finally:
         lock.release()
 
@@ -1097,16 +1195,16 @@ def main(argv=None) -> int:
     ended = _now()
     info["Finished"] = ended.strftime("%Y-%m-%d %H:%M:%S %Z")
     info["Total time"] = _duration((ended - started).total_seconds())
-    write_index(index, cfg, steps, info, warnings, validator)   # the final version
+    write_index(index, cfg, units, info, warnings, validator)   # the final version
 
     # The notebooks that should have run but didn't finish OK. Not a failure: 06 skipped
     # because there is no BIDS dataset yet (e.g. a run of 01 only)
-    bad = [steps[k] for k in run_keys if steps[k].status != "ok"
-           and not (k == "06" and steps[k].status == "skipped" and "04" not in run_keys)]
-    # One line per notebook in the log, e.g. "04 OK  12:31", then where the reports are
+    bad = [u for u in units if (u.key, u.run) in planned_units and u.status != "ok"
+           and not (u.key == "06" and u.status == "skipped" and "04" not in run_keys)]
+    # One line per notebook (and run) in the log, e.g. "04 OK  12:31", then where the reports are
     log.info("===== Summary =====")
-    for s in steps.values():
-        log.info(f"  {s.key} {STATUS_TEXT[s.status]:8s} {_duration(s.seconds) if s.status in ('ok', 'failed') else '':>8s}"
+    for s in units:
+        log.info(f"  {s.label:9s} {STATUS_TEXT[s.status]:8s} {_duration(s.seconds) if s.status in ('ok', 'failed') else '':>8s}"
                  f"  {s.reason}")
     if validator:
         log.info(f"  BIDS validator: {validator.get('errors')} error(s), {validator.get('warnings')} warning(s)")
