@@ -123,8 +123,6 @@ and `sourcedata/`.
 
 ## Sessions with several runs
 
-*In development (the `runs` branch): not ready for real data yet.*
-
 If a session has several runs of the task, each its own cMEG recording (and its own .edf),
 list them in the subject file instead of giving one `cmeg.task_prefix` and `eye.edf_file`:
 
@@ -141,9 +139,16 @@ runs:
 ```
 
 Each run keeps its own files, with a `run-` label (`sub-01_ses-01_task-..._run-01_meg.fif`),
-as BIDS expects: the runs are not joined. The empty room and the head digitization are shared.
-Notebooks 01, 02, 04 and 05 run once per run; the reports and `index.html` show each run
-separately.
+as BIDS expects: the runs are not joined. Notebooks 01, 02, 04 and 05 run once per run; the
+reports and `index.html` show each run separately.
+
+- **Bad channels** are screened and marked per run: each run's `_channels.tsv` has its own, so a
+  sensor that fails in one run stays good in the others. `bad_channels:` applies to every run
+  (with `auto`, each run uses its own candidates).
+- **The empty room and the head digitization** are shared by the runs. The empty room is converted
+  once and gets the bad channels of every run, with reasons naming the run ("bad in run 02: ...").
+- **One .edf for the whole session** works too: give it as every run's `edf_file`. Each run's eye
+  data then cover the whole session, with that run's own `StartTime`.
 
 Behavioral logs (`raw/behav/`), either way:
 
