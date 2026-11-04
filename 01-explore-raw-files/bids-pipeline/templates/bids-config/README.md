@@ -143,7 +143,18 @@ runs:
 Each run keeps its own files, with a `run-` label (`sub-01_ses-01_task-..._run-01_meg.fif`),
 as BIDS expects: the runs are not joined. The empty room and the head digitization are shared.
 Notebooks 01, 02, 04 and 05 run once per run; the reports and `index.html` show each run
-separately. Behavioral logs are not supported with runs yet (set `data.behavioral: false`).
+separately.
+
+Behavioral logs (`raw/behav/`), either way:
+
+- **One set for the whole session** (PsychoPy wrote one file for all runs): nothing to add. The
+  logs go into the dataset once, whole, without a run label
+  (`sub-01_ses-01_task-..._acq-trials_beh.tsv`). They aren't split by run; a column such as `block`
+  says which rows belong to which run.
+- **Each run its own**: give every run a `behav_files:` pattern that picks its `.csv` files, e.g.
+  `behav_files: "*_R1_task-oddballftcued_*.csv"`. Each run's logs get its run label
+  (`..._acq-trials_run-01_beh.tsv`). The check before running stops if a pattern finds nothing or
+  two runs' patterns pick the same file.
 
 ## Placeholders in texts
 

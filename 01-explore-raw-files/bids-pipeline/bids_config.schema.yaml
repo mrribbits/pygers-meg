@@ -218,6 +218,7 @@ $defs:
             run: {$ref: "#/$defs/label"}
             task_prefix: {type: string, minLength: 1}
             edf_file: {type: [string, "null"], minLength: 1}   # null: no eye tracking in this run
+            behav_files: {type: string, minLength: 1}          # this run's logs in raw/behav/ (a pattern)
       bad_channels:
         anyOf:
           - {$ref: "#/$defs/string_list"}

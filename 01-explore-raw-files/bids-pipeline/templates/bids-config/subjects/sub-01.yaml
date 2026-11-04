@@ -44,6 +44,10 @@ cmeg:
 #      - run: "02"
 #        task_prefix: "20260929_141510"
 #        edf_file: "MP0929R2.EDF"
+#  Behavioral logs (raw/behav/): if PsychoPy wrote one set for the whole session, there's nothing
+#  to add; they go into the dataset once, without a run- label. If each run has its own, add
+#  behav_files: to every run, a pattern that picks that run's .csv files, e.g.
+#        behav_files: "*_R1_task-oddballftcued_*.csv"
 
 
 # -------------------------------------------------------------------------------------

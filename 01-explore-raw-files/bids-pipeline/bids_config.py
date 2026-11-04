@@ -157,13 +157,20 @@ class Config:
     # the rest of the code handles both the same way.
     @property
     def runs(self) -> list:
-        """One {"run", "task_prefix", "edf_file"} per run, in order. Without runs: in the subject
+        """One {"run", "task_prefix", "edf_file", "behav_files"} per run, in order. Without runs: in the subject
         file, a single entry with run None (no run- label in any file name)."""
         listed = self.subject.get("runs")
         if listed:
-            return [{"run": r["run"], "task_prefix": r["task_prefix"], "edf_file": r.get("edf_file")} for r in listed]
+            return [{"run": r["run"], "task_prefix": r["task_prefix"], "edf_file": r.get("edf_file"),
+                     "behav_files": r.get("behav_files")} for r in listed]
         return [{"run": None, "task_prefix": (self.subject.get("cmeg") or {}).get("task_prefix"),
-                 "edf_file": (self.subject.get("eye") or {}).get("edf_file")}]
+                 "edf_file": (self.subject.get("eye") or {}).get("edf_file"), "behav_files": None}]
+
+    @property
+    def behav_per_run(self) -> bool:
+        """True if each run names its own behavioral logs (behav_files); False for one set of logs
+        for the whole session (and for a session without runs:, which is one run anyway)."""
+        return any(r["behav_files"] for r in self.runs)
 
     @property
     def run_labels(self) -> list:
@@ -500,6 +507,9 @@ def _run_problems(cfg: Config) -> list:
             if eye and "edf_file" not in r:
                 p.append(f"{name}: runs[{i}] (run {r.get('run')!r}) has no edf_file; give the .edf's name in "
                          "raw/eye/, or null if this run has no eye tracking")
+            if any(x.get("behav_files") for x in runs) and not r.get("behav_files"):
+                p.append(f"{name}: runs[{i}] (run {r.get('run')!r}) has no behav_files, but other runs do: give "
+                         "every run its logs, or none (one set of logs for the whole session)")
             if r.get("edf_file") == "auto":
                 p.append(f"{name}: runs[{i}]: edf_file \"auto\" can't tell the runs' .edf files apart; "
                          "give the file name, e.g. \"MP0929R1.EDF\"")
@@ -695,7 +705,11 @@ def notebook_settings(cfg: Config, inputs: dict | None = None, summary_file=None
         "EMPTYROOM_LAYOUT": opts["emptyroom_layout"],
         "OVERWRITE": opts["overwrite"],
         "MRI_STAGING": S / "mri-staging" if data["mri"] else None,
-        "BEHAV_DIR": raw / "behav" if data["behavioral"] else None,
+        # The behavioral logs: this run's (behav_files), or one set for the whole session, which only
+        # the first run writes (the others get None)
+        "BEHAV_DIR": raw / "behav" if data["behavioral"] and (cfg.behav_per_run or run == cfg.run_labels[0]) else None,
+        "BEHAV_FILES": entry["behav_files"],
+        "BEHAV_PER_RUN": cfg.behav_per_run or run is None,
         "WRITE_DATASET_FILES": opts["write_dataset_files"],
         # 4.2 / 4.4 events
         "EVENT_SOURCE": ev["source"], "STIM_CHANNEL": ev["stim_channel"],

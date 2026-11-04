@@ -23,6 +23,9 @@ The tests (see tests/README.md for more):
                                          without eye tracking skips its 02 and 05
   test_runs_preflight                    each run's recording and files are checked, and named in
                                          the messages
+  test_runs_behavioral_logs              with runs, one set of logs for the session (written once, by
+                                         the first run) or each run's own (behav_files); patterns that
+                                         find nothing or overlap are reported
   test_runs_main                         a whole run (fake notebooks): one settings file per run, each
                                          notebook gets its run's file, a failed 01 run-02 skips only
                                          04 run-02 and 05 run-02
@@ -191,10 +194,52 @@ def test_runs_preflight():
     # 01: each run's recording is looked for (none exist in the fake study)
     problems, _, _ = rp.preflight(cfg, rp.plan_steps(cfg, ["01"]), first, "python3", by_run)
     assert any("runs: run '02': task_prefix '20260929_142000'" in p for p in problems), problems
-    # Behavioral logs with runs: not supported yet, said clearly
+
+
+def _behav(cfg, *names):
+    """Put empty behavioral logs with these names into the fake raw behav/ folder."""
+    for n in names:
+        (cfg.raw_dir / "behav" / n).write_text("a\n")
+
+
+def test_runs_behavioral_logs():
+    task = "oddballftcued"
+    # One set of logs for the whole session: only the first run's 04 gets them, without a run label
+    cfg = bc.load(with_runs(filled_config()))
     cfg.study["data"]["behavioral"] = True
-    problems, _, _ = rp.preflight(cfg, rp.plan_steps(cfg, ["04"]), first, "python3", by_run)
-    assert any("several runs aren't supported yet" in p for p in problems), problems
+    _behav(cfg, f"MP_task-{task}_trials.csv")
+    by_run = _by_run(cfg)
+    assert by_run["01"]["04"]["BEHAV_DIR"] and by_run["02"]["04"]["BEHAV_DIR"] is None
+    assert by_run["01"]["04"]["BEHAV_PER_RUN"] is False and by_run["01"]["04"]["BEHAV_FILES"] is None
+    problems, _, facts = rp.preflight(cfg, rp.plan_steps(cfg, ["04"]), by_run["01"], "python3", by_run)
+    assert not any("behav" in p.lower() for p in problems), problems
+    assert any("one set for all runs" in f for f in facts), facts
+    # Each run its own logs
+    subject_file = with_runs(filled_config())
+    text = subject_file.read_text(encoding="utf-8")
+    for i in (1, 2):
+        text = text.replace(f'task_prefix: "20260929_14{i}000"\n',
+                            f'task_prefix: "20260929_14{i}000"\n    behav_files: "*_R{i}_task-{task}_*.csv"\n')
+    subject_file.write_text(text, encoding="utf-8")
+    cfg = bc.load(subject_file)
+    assert bc.check(cfg) == []
+    cfg.study["data"]["behavioral"] = True
+    _behav(cfg, f"MP_R1_task-{task}_trials.csv", f"MP_R2_task-{task}_trials.csv")
+    by_run = _by_run(cfg)
+    assert by_run["02"]["04"]["BEHAV_FILES"] == f"*_R2_task-{task}_*.csv" and by_run["02"]["04"]["BEHAV_PER_RUN"]
+    problems, _, facts = rp.preflight(cfg, rp.plan_steps(cfg, ["04"]), by_run["01"], "python3", by_run)
+    assert not any("behav" in p.lower() for p in problems), problems
+    assert any("(run 02)" in f and "MP_R2_" in f for f in facts), facts
+    # A pattern that finds nothing, and a file two runs claim
+    cfg.subject["runs"][1]["behav_files"] = "*_R3_*.csv"
+    problems, _, _ = rp.preflight(cfg, rp.plan_steps(cfg, ["04"]), by_run["01"], "python3", _by_run(cfg))
+    assert any("matches nothing" in p and "MP_R1_" in p for p in problems), problems
+    cfg.subject["runs"][1]["behav_files"] = f"*task-{task}_*.csv"
+    problems, _, _ = rp.preflight(cfg, rp.plan_steps(cfg, ["04"]), by_run["01"], "python3", _by_run(cfg))
+    assert any("matches the behav_files of both" in p for p in problems), problems
+    # Only some runs with behav_files: reported by the configuration check
+    cfg.subject["runs"][1].pop("behav_files")
+    assert any("has no behav_files, but other runs do" in p for p in bc.check(cfg))
 
 
 def test_runs_main():

@@ -67,9 +67,11 @@ reports (`04_FIF_to_BIDS_run-02.html`) and its own row on `index.html`. A per-ru
 its files from the same run (04 run-02 from 01 run-02), so a failure in one run skips only that
 run's later notebooks. `Config.runs` in `bids_config.py` gives a session without `runs:` as a
 single run with run `None`, so both cases go through the same code. Not done yet: notebook 01
-converts and screens the empty room again in every run, notebook 04 rewrites it in every run
-(with that run's bad channels), and behavioral logs (`data.behavioral`) are refused for sessions
-with runs until it's settled how they map to runs.
+converts and screens the empty room again in every run, and notebook 04 rewrites it in every run
+(with that run's bad channels). Behavioral logs with runs: one set for the whole session is
+written once, by the first run's 04, without a run label (`BEHAV_DIR` is None for the others,
+`BEHAV_PER_RUN` False); if every run has `behav_files`, each run's 04 copies only its own, with the
+run label. Pre-flight checks that each pattern finds files and that no file belongs to two runs.
 
 Exit status: 0 = all chosen notebooks ran; 1 = one failed or was skipped; 2 = pre-flight
 problems.

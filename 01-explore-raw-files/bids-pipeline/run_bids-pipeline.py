@@ -513,20 +513,40 @@ def preflight(cfg: bc.Config, steps: dict, settings: dict, kernel: str,
             facts.append(f"DICOM files: {settings['03']['DICOM_TEMPLATE']}")
 
     # ---- notebook 04: the behavioral logs ----
-    if "04" in run and cfg.study["data"]["behavioral"] and runs != [None]:
-        # Notebook 04 would copy every log into each run; how logs map to runs isn't settled yet
-        problems.append("Behavioral logs in a session with several runs aren't supported yet: set "
-                        "data.behavioral: false in global-study.yaml for now")
-    elif "04" in run and cfg.study["data"]["behavioral"]:
+    # One set of logs for the session (every <anything>task-<task>_<table>.csv), or, with runs whose
+    # behav_files name their own, each run's (each run's pattern must find files, all named
+    # ..._task-<task>_<table>.csv, and no file may belong to two runs).
+    if "04" in run and cfg.study["data"]["behavioral"]:
         task = cfg.study["study"]["task"]
         behav = raw / "behav"
-        # Notebook 04 converts every <anything>task-<task>_<table>.csv
-        csvs = sorted(behav.glob(f"*task-{task}_*.csv")) if behav.is_dir() else []
-        if csvs:
-            facts.append(f"Behavioral logs: {[p.name for p in csvs]}")
+        everything = sorted(p.name for p in behav.glob("*.csv")) if behav.is_dir() else []
+        if not cfg.behav_per_run:
+            csvs = sorted(behav.glob(f"*task-{task}_*.csv")) if behav.is_dir() else []
+            if csvs:
+                facts.append(f"Behavioral logs{' (one set for all runs)' if runs != [None] else ''}: "
+                             f"{[p.name for p in csvs]}")
+            else:
+                problems.append(f"No *task-{task}_*.csv files in {behav} "
+                                "(or set data.behavioral: false in global-study.yaml)")
         else:
-            problems.append(f"No *task-{task}_*.csv files in {behav} "
-                            "(or set data.behavioral: false in global-study.yaml)")
+            owner = {}                                  # file name -> the run whose pattern found it
+            for entry in cfg.runs:
+                r, pattern = entry["run"], entry["behav_files"]
+                csvs = sorted(behav.glob(pattern)) if behav.is_dir() else []
+                if not csvs:
+                    problems.append(f"{cfg.subject_file.name}: runs: run {r!r}: behav_files {pattern!r} matches "
+                                    f"nothing in {behav} (.csv files there: {everything or 'none'})")
+                    continue
+                facts.append(f"Behavioral logs (run {r}): {[p.name for p in csvs]}")
+                unnamed = [p.name for p in csvs if f"task-{task}_" not in p.name]
+                if unnamed:
+                    problems.append(f"Run {r}'s behavioral logs {unnamed} have no task-{task}_<table> in their "
+                                    "names, which notebook 04 needs to name each table")
+                for p in csvs:
+                    if p.name in owner:
+                        problems.append(f"{p.name} matches the behav_files of both run {owner[p.name]!r} and "
+                                        f"run {r!r}; make the patterns pick each run's logs only")
+                    owner[p.name] = r
 
     # ---- what the chosen notebooks need from notebooks that don't run now ----
     # E.g. "--steps 04": 01 won't run, so its FIF files must already be there.
