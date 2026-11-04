@@ -654,6 +654,8 @@ def notebook_settings(cfg: Config, inputs: dict | None = None, summary_file=None
         "XYZ_FILE": raw / "einscan" / sj["einscan"]["xyz_file"],
         "LINE_FREQ": meg["line_freq"],
         "FORCE": opts["force_reconvert"],
+        # The empty room is shared by the runs: the first run's 01 converts it
+        "CONVERT_EMPTYROOM": run == cfg.run_labels[0],
         "SCREEN_SEGMENT_S": pr["meg_conversion"]["screen"]["segment_s"],
         "SCREEN_Z": pr["meg_conversion"]["screen"]["z_threshold"],
         "SCREEN_FLAT_RATIO": pr["meg_conversion"]["screen"]["flat_ratio"],
@@ -718,6 +720,9 @@ def notebook_settings(cfg: Config, inputs: dict | None = None, summary_file=None
         "EVENT_ID": ev["event_id"], "DROP_UNMAPPED": ev["drop_unmapped"],
         # 6 bad channels (notebook 04 resolves "auto" with notebook 01's candidates)
         "BAD_CHANNELS": sj["bad_channels"], "BAD_REASONS": sj["bad_reasons"],
+        # With runs: the other runs' candidate files, so the shared empty room gets every run's bad channels
+        "OTHER_RUN_CANDIDATES": {r: str(S / "fif" / f"{cfg.task_stem(r)}_meg_bad_channel_candidates.tsv")
+                                 for r in cfg.run_labels if r and r != run},
         # 7 anonymization
         "ANONYMIZE": anon["anonymize"], "DAYSBACK": cfg.private["daysback"],
         "KEEP_HIS": anon["keep_his"], "KEEP_SOURCE": anon["keep_source"],

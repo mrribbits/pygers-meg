@@ -267,6 +267,10 @@ def test_runs():
     assert Path(two["04"]["FIF_DATA"]).name == "sub-01_ses-01_task-oddballftcued_run-02_meg.fif"
     assert Path(two["04"]["FIF_EMPTYROOM"]).name == "sub-01_ses-01_task-noise_meg.fif"   # shared
     assert one["03"] == two["03"] and one["06"] == two["06"]
+    # The shared empty room: converted by the first run's 01; each run's 04 knows the other runs' candidates
+    assert one["01"]["CONVERT_EMPTYROOM"] and not two["01"]["CONVERT_EMPTYROOM"]
+    assert list(two["04"]["OTHER_RUN_CANDIDATES"]) == ["01"]
+    assert two["04"]["OTHER_RUN_CANDIDATES"]["01"].endswith("task-oddballftcued_run-01_meg_bad_channel_candidates.tsv")
     assert bc.notebook_settings(cfg, inputs)["01"]["RUN"] == "01"                      # default: first run
     # A run without eye tracking
     cfg = bc.load(with_runs(filled_config(), edf_files=("R1.EDF", None)))
