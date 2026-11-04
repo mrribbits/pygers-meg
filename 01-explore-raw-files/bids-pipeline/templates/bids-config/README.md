@@ -121,6 +121,46 @@ data then go in `sourcedata/sub-01/raw/` (no `ses-01/` level). Choose this only 
 participant comes once: adding sessions later means renaming every file already in `bids/`
 and `sourcedata/`.
 
+## Sessions with several runs
+
+If a session has several runs of the task, each its own cMEG recording (and its own .edf),
+list them in the subject file instead of giving one `cmeg.task_prefix` and `eye.edf_file`:
+
+```yaml
+cmeg:
+  emptyroom_prefix: "20260929_125813"    # shared by every run
+runs:
+  - run: "01"
+    task_prefix: "20260929_134022"
+    edf_file: "MP0929R1.EDF"             # null if this run has no eye tracking
+  - run: "02"
+    task_prefix: "20260929_141510"
+    edf_file: "MP0929R2.EDF"
+```
+
+Each run keeps its own files, with a `run-` label (`sub-01_ses-01_task-..._run-01_meg.fif`),
+as BIDS expects: the runs are not joined. Notebooks 01, 02, 04 and 05 run once per run; the
+reports and `index.html` show each run separately.
+
+- **Bad channels** are screened and marked per run: each run's `_channels.tsv` has its own, so a
+  sensor that fails in one run stays good in the others. `bad_channels:` applies to every run
+  (with `auto`, each run uses its own candidates).
+- **The empty room and the head digitization** are shared by the runs. The empty room is converted
+  once and gets the bad channels of every run, with reasons naming the run ("bad in run 02: ...").
+- **One .edf for the whole session** works too: give it as every run's `edf_file`. Each run's eye
+  data then cover the whole session, with that run's own `StartTime`.
+
+Behavioral logs (`raw/behav/`), either way:
+
+- **One set for the whole session** (PsychoPy wrote one file for all runs): nothing to add. The
+  logs go into the dataset once, whole, without a run label
+  (`sub-01_ses-01_task-..._acq-trials_beh.tsv`). They aren't split by run; a column such as `block`
+  says which rows belong to which run.
+- **Each run its own**: give every run a `behav_files:` pattern that picks its `.csv` files, e.g.
+  `behav_files: "*_R1_task-oddballftcued_*.csv"`. Each run's logs get its run label
+  (`..._acq-trials_run-01_beh.tsv`). The check before running stops if a pattern finds nothing or
+  two runs' patterns pick the same file.
+
 ## Placeholders in texts
 
 These texts can contain placeholders, filled in by notebook 04 when it runs:

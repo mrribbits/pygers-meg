@@ -58,6 +58,21 @@ Studies without sessions (`study.sessions: false`, `session: null` in each subje
 leave out the `ses-` level everywhere: `sourcedata/sub-01/raw/`, `bids/sub-01/meg/`, and
 file names without `_ses-01`. Below, "session folder" then means `sourcedata/sub-01/`.
 
+Sessions with several runs (`runs:` in the subject file): notebooks 01, 02, 04 and 05 run once
+per run, in the order 01 run-01, 01 run-02, 02 run-01, ..., 03, 04 run-01, ..., 06
+(`PER_RUN_STEPS` and `expand_runs()` in `run_bids-pipeline.py`). Each run has its own settings file
+(`settings_run-01.yaml`, ...; 03 and 06 read the first one, their settings being the same in all),
+its own executed notebooks and reports (`04_FIF_to_BIDS_run-02.html`) and its own row on
+`index.html`. A per-run notebook needs its files from the same run (04 run-02 from 01 run-02), so a
+failure in one run skips only that run's later notebooks. `Config.runs` in `bids_config.py` gives a
+session without `runs:` as a single run with run `None`, so both cases go through the same code.
+The shared empty room: the first run's 01 converts it (`CONVERT_EMPTYROOM`); every run's 04 writes
+it with the bad channels of all runs (`OTHER_RUN_CANDIDATES`), so it comes out the same whichever
+run writes it last. Behavioral logs: one set for the whole session is written once, by the first
+run's 04, without a run label (`BEHAV_DIR` is None for the others, `BEHAV_PER_RUN` False); if every
+run has `behav_files`, each run's 04 copies only its own, with the run label. Tested on a two-run
+copy of the sample session (its task recording split at a part boundary).
+
 Exit status: 0 = all chosen notebooks ran; 1 = one failed or was skipped; 2 = pre-flight
 problems.
 

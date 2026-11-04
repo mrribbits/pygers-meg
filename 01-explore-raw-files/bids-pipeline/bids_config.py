@@ -19,9 +19,11 @@ pygers-meg's 01-explore-raw-files folder):
 
     python bids-pipeline/bids_config.py /path/to/bids-config/subjects/sub-01.yaml
     python bids-pipeline/bids_config.py /path/to/bids-config/subjects/sub-01.yaml --show 04
+    python bids-pipeline/bids_config.py /path/to/bids-config/subjects/sub-01.yaml --show 04 --run 02
 
 The first form lists every problem it finds (or says the configuration is complete);
---show NN also prints the settings notebook NN would receive.
+--show NN also prints the settings notebook NN would receive (--run NN: for that run, in a
+session with several runs).
 """
 from __future__ import annotations
 
@@ -147,6 +149,44 @@ class Config:
     def stem(self) -> str:
         """sub-XX_ses-YY (or sub-XX without sessions), the start of every file name."""
         return f"sub-{self.subject['subject']}" + (f"_ses-{self.session}" if self.session else "")
+
+    # ---- runs ----
+    # A session is one recording of the task (cmeg.task_prefix and eye.edf_file in the subject
+    # file), or several runs, each its own recording with its own .edf (the subject file's runs:
+    # list). Everything below treats the first case as a single run without a label (None), so
+    # the rest of the code handles both the same way.
+    @property
+    def runs(self) -> list:
+        """One {"run", "task_prefix", "edf_file", "behav_files"} per run, in order. Without runs: in the subject
+        file, a single entry with run None (no run- label in any file name)."""
+        listed = self.subject.get("runs")
+        if listed:
+            return [{"run": r["run"], "task_prefix": r["task_prefix"], "edf_file": r.get("edf_file"),
+                     "behav_files": r.get("behav_files")} for r in listed]
+        return [{"run": None, "task_prefix": (self.subject.get("cmeg") or {}).get("task_prefix"),
+                 "edf_file": (self.subject.get("eye") or {}).get("edf_file"), "behav_files": None}]
+
+    @property
+    def behav_per_run(self) -> bool:
+        """True if each run names its own behavioral logs (behav_files); False for one set of logs
+        for the whole session (and for a session without runs:, which is one run anyway)."""
+        return any(r["behav_files"] for r in self.runs)
+
+    @property
+    def run_labels(self) -> list:
+        """["01", "02", ...], or [None] for a session without runs: list."""
+        return [r["run"] for r in self.runs]
+
+    def run_entry(self, run: str | None) -> dict:
+        """The runs entry with this label (None: the single run of a session without runs:)."""
+        for r in self.runs:
+            if r["run"] == run:
+                return r
+        raise KeyError(f"{self.label} has no run {run!r} (runs: {self.run_labels})")
+
+    def task_stem(self, run: str | None = None) -> str:
+        """sub-XX_ses-YY_task-<task>, plus _run-NN for a run: the start of a recording's file names."""
+        return f"{self.stem}_task-{self.study['study']['task']}" + (f"_run-{run}" if run else "")
 
 
 # =====================================================================================
@@ -388,6 +428,9 @@ def _cross_problems(cfg: Config) -> list:
         p.append(f"{cfg.subject_file.name}: participant has column(s) {undescribed}; describe them in "
                  "global-study.yaml (participants_columns)")
 
+    # Runs: either one recording (cmeg.task_prefix, eye.edf_file) or a runs: list, not both
+    p += _run_problems(cfg)
+
     # Bad channels: add and keep don't overlap
     bad = cfg.subject.get("bad_channels")
     if isinstance(bad, dict):
@@ -437,6 +480,48 @@ def _cross_problems(cfg: Config) -> list:
     return p
 
 
+def _run_problems(cfg: Config) -> list:
+    """The subject file's recordings: one task recording, or a runs: list (each run with its own
+    recording and, with eye tracking, its own .edf)."""
+    p, name = [], cfg.subject_file.name
+    sj = cfg.subject
+    runs = sj.get("runs") or []
+    one_prefix = (sj.get("cmeg") or {}).get("task_prefix")
+    one_edf = (sj.get("eye") or {}).get("edf_file")
+    eye = cfg.study.get("data", {}).get("eye_tracking")
+    if runs:
+        if one_prefix:
+            p.append(f"{name}: give the task recording either as cmeg.task_prefix (one run) or in runs: "
+                     "(several), not both; remove cmeg.task_prefix")
+        if one_edf:
+            p.append(f"{name}: with runs:, give each run's .edf as its edf_file; remove eye.edf_file")
+        for what in ("run", "task_prefix"):
+            values = [r.get(what) for r in runs]
+            dupes = sorted({v for v in values if v and values.count(v) > 1})
+            if dupes:
+                p.append(f"{name}: runs: the {what} {dupes} appears more than once")
+        prefixes = [r.get("task_prefix") for r in runs]
+        if (sj.get("cmeg") or {}).get("emptyroom_prefix") in prefixes:
+            p.append(f"{name}: runs: a run's task_prefix is the empty-room recording (cmeg.emptyroom_prefix)")
+        for i, r in enumerate(runs):
+            if eye and "edf_file" not in r:
+                p.append(f"{name}: runs[{i}] (run {r.get('run')!r}) has no edf_file; give the .edf's name in "
+                         "raw/eye/, or null if this run has no eye tracking")
+            if any(x.get("behav_files") for x in runs) and not r.get("behav_files"):
+                p.append(f"{name}: runs[{i}] (run {r.get('run')!r}) has no behav_files, but other runs do: give "
+                         "every run its logs, or none (one set of logs for the whole session)")
+            if r.get("edf_file") == "auto":
+                p.append(f"{name}: runs[{i}]: edf_file \"auto\" can't tell the runs' .edf files apart; "
+                         "give the file name, e.g. \"MP0929R1.EDF\"")
+    else:
+        if not one_prefix:
+            p.append(f"{name}: no task recording: set cmeg.task_prefix (or list the runs under runs:)")
+        if eye and not one_edf:
+            p.append(f"{name}: eye.edf_file is not set (\"auto\", or the .edf's file name), and the study has "
+                     "eye tracking (data.eye_tracking: true)")
+    return p
+
+
 def check(cfg: Config) -> list:
     """Every problem found in the configuration (an empty list means it's complete).
     The schema comes first; the other checks run only if it passes, since they rely on it."""
@@ -461,28 +546,37 @@ def _is_dicom(path: Path) -> bool:
 
 
 def find_inputs(cfg: Config) -> dict:
-    """The EDF file and the DICOM file pattern for this session. Raises ConfigError, listing
-    what it did find, if a needed input can't be found. Only looks for data the study has."""
-    found, problems = {"edf_file": None, "dicom_template": None}, []
+    """The EDF file(s) and the DICOM file pattern for this session. Raises ConfigError, listing
+    what it did find, if a needed input can't be found. Only looks for data the study has.
+
+    Returns {"edf_file": ..., "edf_files": {run: path or None}, "dicom_template": ...}. edf_file is
+    the .edf of a session without runs (None with runs:); edf_files has every run's (None for a run
+    without eye tracking)."""
+    found, problems = {"edf_file": None, "edf_files": {}, "dicom_template": None}, []
     data = cfg.study["data"]
 
     if data["eye_tracking"]:
         eye_dir = cfg.raw_dir / "eye"
-        name = cfg.subject["eye"]["edf_file"]
         if not eye_dir.is_dir():
             problems.append(f"No eye/ folder in {cfg.raw_dir} (or set data.eye_tracking: false in global-study.yaml)")
-        elif name == "auto":
-            edfs = sorted(p for p in eye_dir.iterdir() if p.suffix.lower() == ".edf")
-            if len(edfs) == 1:
-                found["edf_file"] = edfs[0]
-            else:
-                problems.append(f"{eye_dir}: found {len(edfs)} .edf files ({[p.name for p in edfs]}); "
-                                "give the right one as eye.edf_file in the subject file")
-        elif (eye_dir / name).is_file():
-            found["edf_file"] = eye_dir / name
         else:
-            problems.append(f"{eye_dir / name} not found; .edf files there: "
-                            f"{[p.name for p in eye_dir.iterdir() if p.suffix.lower() == '.edf']}")
+            edfs = sorted(p for p in eye_dir.iterdir() if p.suffix.lower() == ".edf")
+            for entry in cfg.runs:
+                run, name = entry["run"], entry["edf_file"]
+                where = f"runs: run {run!r}: edf_file" if run else "eye.edf_file"
+                if name is None:                  # a run without eye tracking
+                    found["edf_files"][run] = None
+                elif name == "auto":
+                    if len(edfs) == 1:
+                        found["edf_files"][run] = edfs[0]
+                    else:
+                        problems.append(f"{eye_dir}: found {len(edfs)} .edf files ({[p.name for p in edfs]}); "
+                                        "give the right one as eye.edf_file in the subject file")
+                elif (eye_dir / name).is_file():
+                    found["edf_files"][run] = eye_dir / name
+                else:
+                    problems.append(f"{where}: {eye_dir / name} not found; .edf files there: {[p.name for p in edfs]}")
+            found["edf_file"] = found["edf_files"].get(None)
 
     if data["mri"]:
         mri_dir = cfg.raw_dir / "mri"
@@ -520,16 +614,25 @@ def find_inputs(cfg: Config) -> dict:
 #  The settings each notebook receives
 # =====================================================================================
 
-def notebook_settings(cfg: Config, inputs: dict | None = None, summary_file=None) -> dict:
+_FIRST_RUN = object()     # notebook_settings' default: the session's first (or only) run
+
+
+def notebook_settings(cfg: Config, inputs: dict | None = None, summary_file=None, run=_FIRST_RUN) -> dict:
     """{"01": {...}, ..., "06": {...}}: for each notebook, every name it asks from_config()
     for, with its value. Each notebook's dict also lists under "_paths" the names whose
     values the notebook turns into paths.
 
     inputs: the result of find_inputs(cfg) (looked up on disk if not given).
     summary_file: where notebook 06 saves the validator's counts (the run's report folder).
+    run: which run the per-run notebooks (01, 02, 04, 05) get, e.g. "02" (default: the first;
+    None for a session without runs:). 03 and 06 get the same settings for every run.
     """
     if inputs is None:
         inputs = find_inputs(cfg)
+    entry = cfg.runs[0] if run is _FIRST_RUN else cfg.run_entry(run)
+    run = entry["run"]
+    edf_files = inputs.get("edf_files") or {}
+    edf_file = edf_files[run] if run in edf_files else inputs.get("edf_file")
     st, sj, pr, ds, fc = cfg.study, cfg.subject, cfg.processing, cfg.dataset, cfg.facility
     data, opts = st["data"], st["options"]
     task, sub, ses = st["study"]["task"], sj["subject"], sj["session"]
@@ -544,13 +647,15 @@ def notebook_settings(cfg: Config, inputs: dict | None = None, summary_file=None
     nb["01"] = {
         "RAW_DIR": raw,
         "OUT_DIR": S / "fif",
-        "SUBJECT": sub, "SESSION": ses, "TASK": task,
+        "SUBJECT": sub, "SESSION": ses, "TASK": task, "RUN": run,
         "ER_PREFIX": sj["cmeg"]["emptyroom_prefix"],
-        "DATA_PREFIX": sj["cmeg"]["task_prefix"],
+        "DATA_PREFIX": entry["task_prefix"],
         "XFM_FILE": raw / "einscan" / sj["einscan"]["xfm_file"],
         "XYZ_FILE": raw / "einscan" / sj["einscan"]["xyz_file"],
         "LINE_FREQ": meg["line_freq"],
         "FORCE": opts["force_reconvert"],
+        # The empty room is shared by the runs: the first run's 01 converts it
+        "CONVERT_EMPTYROOM": run == cfg.run_labels[0],
         "SCREEN_SEGMENT_S": pr["meg_conversion"]["screen"]["segment_s"],
         "SCREEN_Z": pr["meg_conversion"]["screen"]["z_threshold"],
         "SCREEN_FLAT_RATIO": pr["meg_conversion"]["screen"]["flat_ratio"],
@@ -561,8 +666,8 @@ def notebook_settings(cfg: Config, inputs: dict | None = None, summary_file=None
 
     eye_meta = pr["eye_conversion"]["metadata_file"] or fc["eye_tracker"]["metadata_file"]
     nb["02"] = {
-        "EDF_FILE": inputs.get("edf_file"),
-        "SUBJECT": sub, "SESSION": ses, "TASK": task, "RUN": None,
+        "EDF_FILE": edf_file,
+        "SUBJECT": sub, "SESSION": ses, "TASK": task, "RUN": run,
         "OUT_DIR": S / "eye-staging",
         "METADATA_FILE": eye_meta,
         "EDF2ASC_DIR": st["software"]["edf2asc_dir"],
@@ -595,14 +700,18 @@ def notebook_settings(cfg: Config, inputs: dict | None = None, summary_file=None
     ev, anon, desc, cit = pr["events"], pr["anonymization"], ds["description"], ds["citation"]
     newest = ds["changes"][0]
     nb["04"] = {
-        "FIF_DATA": S / "fif" / f"{cfg.stem}_task-{task}_meg.fif",
+        "FIF_DATA": S / "fif" / f"{cfg.task_stem(run)}_meg.fif",
         "FIF_EMPTYROOM": S / "fif" / f"{cfg.stem}_task-noise_meg.fif",
         "BIDS_ROOT": cfg.bids_root,
-        "SUBJECT": sub, "SESSION": ses, "TASK": task, "RUN": None,
+        "SUBJECT": sub, "SESSION": ses, "TASK": task, "RUN": run,
         "EMPTYROOM_LAYOUT": opts["emptyroom_layout"],
         "OVERWRITE": opts["overwrite"],
         "MRI_STAGING": S / "mri-staging" if data["mri"] else None,
-        "BEHAV_DIR": raw / "behav" if data["behavioral"] else None,
+        # The behavioral logs: this run's (behav_files), or one set for the whole session, which only
+        # the first run writes (the others get None)
+        "BEHAV_DIR": raw / "behav" if data["behavioral"] and (cfg.behav_per_run or run == cfg.run_labels[0]) else None,
+        "BEHAV_FILES": entry["behav_files"],
+        "BEHAV_PER_RUN": cfg.behav_per_run or run is None,
         "WRITE_DATASET_FILES": opts["write_dataset_files"],
         # 4.2 / 4.4 events
         "EVENT_SOURCE": ev["source"], "STIM_CHANNEL": ev["stim_channel"],
@@ -611,6 +720,9 @@ def notebook_settings(cfg: Config, inputs: dict | None = None, summary_file=None
         "EVENT_ID": ev["event_id"], "DROP_UNMAPPED": ev["drop_unmapped"],
         # 6 bad channels (notebook 04 resolves "auto" with notebook 01's candidates)
         "BAD_CHANNELS": sj["bad_channels"], "BAD_REASONS": sj["bad_reasons"],
+        # With runs: the other runs' candidate files, so the shared empty room gets every run's bad channels
+        "OTHER_RUN_CANDIDATES": {r: str(S / "fif" / f"{cfg.task_stem(r)}_meg_bad_channel_candidates.tsv")
+                                 for r in cfg.run_labels if r and r != run},
         # 7 anonymization
         "ANONYMIZE": anon["anonymize"], "DAYSBACK": cfg.private["daysback"],
         "KEEP_HIS": anon["keep_his"], "KEEP_SOURCE": anon["keep_source"],
@@ -667,7 +779,7 @@ def notebook_settings(cfg: Config, inputs: dict | None = None, summary_file=None
     bp = sync["blink_preview"]
     nb["05"] = {
         "BIDS_ROOT": cfg.bids_root,
-        "SUBJECT": sub, "SESSION": ses, "TASK": task, "RUN": None,
+        "SUBJECT": sub, "SESSION": ses, "TASK": task, "RUN": run,
         "RECORDING": sync["recording"],
         "EYE2BIDS_DIR": S / "eye-staging",
         "FIRST_PASS_TOLERANCE_S": sync["first_pass_tolerance_s"],
@@ -700,6 +812,12 @@ def notebook_settings(cfg: Config, inputs: dict | None = None, summary_file=None
         "SHOW_TEXT_REPORT": val["show_text_report"],
         "FAIL_ON_ERRORS": val["fail_on_errors"],
         "SUMMARY_FILE": summary_file,
+        # For the Methods text: how notebook 01 screened for bad channels
+        "SCREEN_SEGMENT_S": pr["meg_conversion"]["screen"]["segment_s"],
+        "SCREEN_Z": pr["meg_conversion"]["screen"]["z_threshold"],
+        "SCREEN_FLAT_RATIO": pr["meg_conversion"]["screen"]["flat_ratio"],
+        "SCREEN_MIN_SEGMENTS": pr["meg_conversion"]["screen"]["min_segments"],
+        "FLAT_MARKS_WHOLE_SENSOR": pr["meg_conversion"]["screen"]["flat_marks_whole_sensor"],
     }
 
     # Paths as plain text (YAML has no path type); "_paths" tells each notebook which to turn back
@@ -734,6 +852,7 @@ def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description="Check a Pygers-MEG-to-BIDS bids-config (starting from a subject file).")
     parser.add_argument("subject_file", help="e.g. /jukebox/<lab>/<study>/bids-config/subjects/sub-01.yaml")
     parser.add_argument("--show", choices=NOTEBOOKS, help="also print the settings this notebook would receive")
+    parser.add_argument("--run", help="with --show, in a session with runs: which run, e.g. 02 (default: the first)")
     parser.add_argument("--no-data", action="store_true",
                         help="don't look for the raw data on disk (check the files only)")
     args = parser.parse_args(argv)
@@ -744,7 +863,7 @@ def main(argv=None) -> int:
         print("Could not read the configuration:\n  " + "\n  ".join(err.problems))
         return 2
     problems = check(cfg)
-    inputs = {"edf_file": None, "dicom_template": None}
+    inputs = {"edf_file": None, "edf_files": {}, "dicom_template": None}
     if not problems and not args.no_data:
         try:
             inputs = find_inputs(cfg)
@@ -755,15 +874,21 @@ def main(argv=None) -> int:
         for item in problems:
             print("  -", item)
         return 1
+    runs = [r for r in cfg.run_labels if r]
     print(f"OK: the configuration for {cfg.subject_file.name} is complete "
-          f"({cfg.label}, task-{cfg.study['study']['task']}).")
+          f"({cfg.label}, task-{cfg.study['study']['task']}"
+          + (f", runs {', '.join(runs)}" if runs else "") + ").")
     todos = publication_todos(cfg)
     if todos:
         print(f"\nBefore you share the dataset, fill in these {len(todos)} value(s) (they don't stop the pipeline):")
         for item in todos:
             print("  -", item)
     if args.show:
-        print(yaml.safe_dump({args.show: notebook_settings(cfg, inputs)[args.show]},
+        if args.run and args.run not in cfg.run_labels:
+            print(f"--run {args.run}: {cfg.subject_file.name} has no such run (runs: {[r for r in cfg.run_labels if r]})")
+            return 1
+        run = args.run if args.run else _FIRST_RUN
+        print(yaml.safe_dump({args.show: notebook_settings(cfg, inputs, run=run)[args.show]},
                              sort_keys=False, allow_unicode=True, width=100))
     return 0
 
