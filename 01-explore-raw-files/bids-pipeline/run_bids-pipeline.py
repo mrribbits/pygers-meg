@@ -97,8 +97,9 @@ STEP_DATA = {"02": "eye_tracking", "03": "mri", "05": "eye_tracking"}
 # Notebooks that write into (or read the whole of) the BIDS dataset or the shared
 # sourcedata/code/heuristic.py: they run under the lock (see DatasetLock below).
 LOCKED_STEPS = {"03", "04", "05", "06"}
-# The oldest cMEG2FIF version notebook 01 works with, as (major, minor): 2.15.
-MIN_CMEG2FIF = (2, 15)
+# The oldest cMEG2FIF version the pipeline accepts, as (major, minor): 2.16, the version pinned in
+# scotty-environment.yml.
+MIN_CMEG2FIF = (2, 16)
 
 
 # =====================================================================================

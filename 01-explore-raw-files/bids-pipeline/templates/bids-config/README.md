@@ -26,6 +26,14 @@ to change it) is in `01-explore-raw-files/bids-pipeline/README.md` in the pygers
   pip install --force-reinstall --no-deps "eye2bids @ git+https://github.com/mrribbits/eye2bids.git@0991c4c6e25b581b24a7011f8fdc103fddd7f26a"
   ```
 
+  Then check cMEG2FIF. If `cmeg2fif --version` doesn't say 2.16, update it to the version
+  pinned in `scotty-environment.yml`:
+
+  ```bash
+  cmeg2fif --version
+  pip install --upgrade "cmeg2fif @ git+https://github.com/mrribbits/cMEG2FIF-Scully.git@04845fce818291835eada8a3095ab3290a633da6"
+  ```
+
   Then restart any running Jupyter kernels, and check:
 
   ```bash
