@@ -12,8 +12,9 @@ What it does:
      that the software each chosen notebook needs is there and starts (pre-flight). Any
      problem stops it here, before anything is changed, with the full list.
   2. Decides which notebooks run: those turned on under "steps:" in global-study.yaml (or given
-     with --steps), minus those whose data the study doesn't have. If 04 runs, 05 runs too
-     (04 rewrites a file 05 completes), and 06 (the validation) always runs last.
+     with --steps), minus those whose data the study doesn't have. 06 (the validation) always
+     runs last. Choosing 04 without 05 gives a warning (04 rewrites a file 05 completes), but
+     05 is not added: you may run your own version of it.
   3. Runs each notebook with papermill. Each one reads its settings from one settings file
      written for this run. A notebook that fails doesn't stop the others, but the notebooks
      that need its output are skipped.
@@ -97,8 +98,9 @@ STEP_DATA = {"02": "eye_tracking", "03": "mri", "05": "eye_tracking"}
 # Notebooks that write into (or read the whole of) the BIDS dataset or the shared
 # sourcedata/code/heuristic.py: they run under the lock (see DatasetLock below).
 LOCKED_STEPS = {"03", "04", "05", "06"}
-# The oldest cMEG2FIF version notebook 01 works with, as (major, minor): 2.15.
-MIN_CMEG2FIF = (2, 15)
+# The oldest cMEG2FIF version the pipeline accepts, as (major, minor): 2.16, the version pinned in
+# scotty-environment.yml.
+MIN_CMEG2FIF = (2, 16)
 
 
 # =====================================================================================
@@ -236,8 +238,9 @@ def plan_steps(cfg: bc.Config, chosen: list | None = None) -> dict:
     """{"01": Step, ...} for every notebook, each "planned" or "skipped" with the reason.
 
     chosen: the notebooks given with --steps, or None to use "steps:" in global-study.yaml.
-    The rules, in this order: not chosen -> skipped; 04 chosen -> 05 added; 06 always
-    added; the study has no data for it -> skipped (this one wins over the others)."""
+    The rules, in this order: not chosen -> skipped; 06 always added; the study has no data
+    for it -> skipped (this one wins over the others). (04 without 05 is allowed: preflight()
+    warns about it.)"""
     data = cfg.study["data"]
     if chosen is None:
         # Every notebook set to true under "steps:" in global-study.yaml
@@ -250,10 +253,6 @@ def plan_steps(cfg: bc.Config, chosen: list | None = None) -> dict:
     for k, step in steps.items():
         if k not in wanted:
             step.status, step.reason = "skipped", f"not chosen ({source})"
-    # 04 rewrites the _events.json that 05 adds the eye-tracking events to, so after 04, 05
-    # must run again
-    if "04" in wanted and "05" not in wanted:
-        steps["05"].status, steps["05"].reason = "planned", "added: 04 rewrites _events.json, which 05 completes"
     # The validation of the whole dataset always comes last
     if "06" not in wanted:
         steps["06"].status, steps["06"].reason = "planned", "added: the validation always runs last"
@@ -483,6 +482,13 @@ def preflight(cfg: bc.Config, steps: dict, settings: dict, kernel: str) -> tuple
                     warnings.append(msg + ". Notebook 06 will be skipped.")
                 else:
                     problems.append(msg + f". Add {producer} to the steps.")
+    # 04 without 05: 04 rewrites the MEG _events.json, which 05 completes. 05 isn't added for you
+    # (you may run your own version of it), so this is a reminder, not a stop.
+    if "04" in run and "05" not in run and cfg.study["data"]["eye_tracking"]:
+        warnings.append("Notebook 04 rewrites the MEG _events.json, which notebook 05 completes with the "
+                        "eye tracker's screen information, and 05 isn't chosen to run. Run 05 (or your own "
+                        "version of it) afterwards; until then the BIDS validator reports "
+                        "INCOMPLETE_STIMULUS_PRESENTATION.")
     warnings += staleness_warnings(cfg, steps, settings)
 
     # ---- the output folders can be written ----

@@ -38,7 +38,8 @@ What happens:
    here, before anything is changed, with the whole list. Warnings (not stops): a
    notebook that won't run whose output is older than its input.
 2. **Which notebooks run**: `steps:` in global-study.yaml (or `--steps`), minus those whose data
-   the study doesn't have (`data:`). If 04 runs, 05 runs too; 06 always runs last.
+   the study doesn't have (`data:`). 06 always runs last. Choosing 04 without 05 gives a warning (04 rewrites a file
+   05 completes), but 05 isn't added, so you can run your own version of it.
 3. **Running**: each notebook runs with papermill, reading its settings from the run's
    `settings.yaml`. A failed notebook doesn't stop the others, but the notebooks that need
    its output are skipped. 06 runs whenever there is a BIDS dataset.

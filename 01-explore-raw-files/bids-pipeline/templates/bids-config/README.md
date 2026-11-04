@@ -26,6 +26,14 @@ to change it) is in `01-explore-raw-files/bids-pipeline/README.md` in the pygers
   pip install --force-reinstall --no-deps "eye2bids @ git+https://github.com/mrribbits/eye2bids.git@0991c4c6e25b581b24a7011f8fdc103fddd7f26a"
   ```
 
+  Then check cMEG2FIF. If `cmeg2fif --version` doesn't say 2.16, update it to the version
+  pinned in `scotty-environment.yml`:
+
+  ```bash
+  cmeg2fif --version
+  pip install --upgrade "cmeg2fif @ git+https://github.com/mrribbits/cMEG2FIF-Scully.git@04845fce818291835eada8a3095ab3290a633da6"
+  ```
+
   Then restart any running Jupyter kernels, and check:
 
   ```bash
@@ -134,6 +142,15 @@ These texts can contain placeholders, filled in by notebook 04 when it runs:
 
 ## Bad channels
 
-Run notebook 01 first (`bash run_bids-pipeline.sh <subject file> --steps 01`) and look at its report: the
-candidate table and the spectra. Then set `bad_channels` in the subject file: a list,
-`auto` (notebook 01's candidates), or `auto` with `add`/`keep` changes.
+Notebook 01 screens both recordings (task and empty room) from start to end and lists candidate bad
+channels, each labeled `flat`, `flat sensor` (another direction of a flat sensor), `noisy` or `marked bad in
+Cerca`. They are only suggestions, so look at them before notebook 04 writes them into the dataset:
+
+1. Run notebook 01 alone: `bash run_bids-pipeline.sh <subject file> --steps 01`.
+2. Open its report (`reports/latest/index.html`, then notebook 01), Section 6.1: the candidate table and the map
+   of when each channel was flat or noisy. Check them against the spectra and traces in Section 9.
+3. Set `bad_channels` in the subject file: a list, `auto` (notebook 01's candidates), or `auto` with `add`/`keep`
+   changes. Check the `noisy` ones in particular: `keep` leaves a channel good.
+4. Run the rest, e.g. `--steps 02,03,04,05`. Notebook 01 doesn't need to run again.
+
+You can change your mind later: update `bad_channels` in the subject file and run `--steps 04,05`.
