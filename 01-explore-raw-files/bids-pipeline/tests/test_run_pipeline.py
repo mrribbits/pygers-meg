@@ -191,6 +191,9 @@ def test_runs_preflight():
     problems, _, _ = rp.preflight(cfg, rp.plan_steps(cfg, ["04", "05"]), first, "python3", by_run)
     assert any("Notebook 04 (run 02) needs the FIF files" in p and "_run-02_meg.fif" in p for p in problems), problems
     assert any("Notebook 05 (run 01) needs the eye2bids files" in p for p in problems), problems
+    # 06 runs once: with 04 chosen (for every run), no "06 will be skipped" warning
+    _, warnings, _ = rp.preflight(cfg, rp.plan_steps(cfg, ["04", "05"]), first, "python3", by_run)
+    assert not any("06 will be skipped" in w for w in warnings), warnings
     # 01: each run's recording is looked for (none exist in the fake study)
     problems, _, _ = rp.preflight(cfg, rp.plan_steps(cfg, ["01"]), first, "python3", by_run)
     assert any("runs: run '02': task_prefix '20260929_142000'" in p for p in problems), problems

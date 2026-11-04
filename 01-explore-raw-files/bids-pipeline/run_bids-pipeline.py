@@ -554,9 +554,13 @@ def preflight(cfg: bc.Config, steps: dict, settings: dict, kernel: str,
     for step_key, r in [(u.key, u.run) for u in units if u.status == "planned"]:
         needs = requirements(cfg, _settings_for(settings_by_run, r))[step_key]
         for producer, what, paths, check in needs:
-            # The notebook that makes them for this run (03 runs once: run None)
-            producer_run = r if producer in PER_RUN_STEPS else None
-            if (producer, producer_run) in planned:
+            # The notebook that makes them for this run (03 runs once: run None). For 06, which runs
+            # once, a per-run producer (04) counts if it runs for any run.
+            if producer in PER_RUN_STEPS and r is None and runs != [None]:
+                producer_runs = runs
+            else:
+                producer_runs = [r if producer in PER_RUN_STEPS else None]
+            if any((producer, pr) in planned for pr in producer_runs):
                 continue                   # it runs first and makes the files; checked later
             # Skipped because the study has no such data (e.g. no MRI): nothing to need
             if steps[producer].status == "skipped" and producer in STEP_DATA \
