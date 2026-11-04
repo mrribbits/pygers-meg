@@ -237,11 +237,13 @@ $defs:
           screen:
             type: object
             additionalProperties: false
-            required: [tmin, duration, z_threshold]
+            required: [segment_s, z_threshold, flat_ratio, min_segments, flat_marks_whole_sensor]
             properties:
-              tmin: {type: number, minimum: 0}
-              duration: {type: number, exclusiveMinimum: 0}
+              segment_s: {type: number, exclusiveMinimum: 0}
               z_threshold: {type: number, exclusiveMinimum: 0}
+              flat_ratio: {type: number, exclusiveMinimum: 0, exclusiveMaximum: 1}
+              min_segments: {type: integer, minimum: 1}
+              flat_marks_whole_sensor: {type: boolean}
           browse_starts: {type: array, minItems: 1, items: {type: number, minimum: 0}}
       eye_conversion:
         type: object

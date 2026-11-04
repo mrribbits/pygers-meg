@@ -15,13 +15,17 @@
 #  Notebook 01: cMEG -> FIF conversion, bad-channel screen
 # -------------------------------------------------------------------------------------
 meg_conversion:
-  # The bad-channel screen: flags MEG channels that are flat or noisy compared with the
-  # others, in a stretch of the task recording filtered 1-40 Hz. The candidates are saved
-  # next to the FIF; notebook 04 uses them when a subject file says bad_channels: auto.
+  # The bad-channel screen: flags the OPM channels that are flat or noisy compared with
+  # the others, over the whole of both recordings (task and empty room), filtered 1-40 Hz,
+  # in short segments. The candidates are saved next to the task FIF, each labeled flat,
+  # flat sensor, noisy or marked bad in Cerca; notebook 04 uses them when a subject file
+  # says bad_channels: auto.
   screen:
-    tmin: 30.0          # start of the stretch, in seconds from the start of the recording
-    duration: 60.0      # length of the stretch, in seconds
-    z_threshold: 5.0    # robust z-score above which a channel counts as noisy (below minus this: flat)
+    segment_s: 5.0      # length of each screened segment, in seconds
+    z_threshold: 5.0    # noisy in a segment: robust z-score above this
+    flat_ratio: 0.1     # flat in a segment: standard deviation below this fraction of the median channel's
+    min_segments: 5     # flagged when flat (or noisy) in at least this many segments
+    flat_marks_whole_sensor: true   # one direction of a sensor flat: flag all three (X, Y, Z)
 
   # The report shows still pictures of the raw data: one 10-s window starting at each of
   # these times (seconds). e.g. [60, 1800] for one near the start and one later on.

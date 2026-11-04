@@ -61,7 +61,8 @@ eye:
 #      auto: true
 #      add: ["2C[Z]"]                     ... plus these
 #      keep: ["1A[Y]"]                    ... minus these (kept good even if flagged)
-#  Check notebook 01's report (the candidate table and spectra) before relying on "auto".
+#  Check notebook 01's report (Section 6.1: the candidates, each labeled flat, flat sensor,
+#  noisy or marked bad in Cerca) before relying on "auto". See the README's "Bad channels".
 bad_channels: []
 
 # Why each channel is bad (written to _channels.tsv), e.g. {"2C[Z]": "flat signal"}. With

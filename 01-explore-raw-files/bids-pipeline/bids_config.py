@@ -551,9 +551,11 @@ def notebook_settings(cfg: Config, inputs: dict | None = None, summary_file=None
         "XYZ_FILE": raw / "einscan" / sj["einscan"]["xyz_file"],
         "LINE_FREQ": meg["line_freq"],
         "FORCE": opts["force_reconvert"],
-        "SCREEN_TMIN": pr["meg_conversion"]["screen"]["tmin"],
-        "SCREEN_DUR": pr["meg_conversion"]["screen"]["duration"],
+        "SCREEN_SEGMENT_S": pr["meg_conversion"]["screen"]["segment_s"],
         "SCREEN_Z": pr["meg_conversion"]["screen"]["z_threshold"],
+        "SCREEN_FLAT_RATIO": pr["meg_conversion"]["screen"]["flat_ratio"],
+        "SCREEN_MIN_SEGMENTS": pr["meg_conversion"]["screen"]["min_segments"],
+        "FLAT_MARKS_WHOLE_SENSOR": pr["meg_conversion"]["screen"]["flat_marks_whole_sensor"],
         "BROWSE_STARTS": pr["meg_conversion"]["browse_starts"],
     }
 
