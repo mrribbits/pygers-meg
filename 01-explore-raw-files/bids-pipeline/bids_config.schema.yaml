@@ -179,7 +179,7 @@ $defs:
   subject:
     type: object
     additionalProperties: false
-    required: [study_config, subject, session, cmeg, einscan, eye, bad_channels, bad_reasons, participant, overrides]
+    required: [study_config, subject, session, cmeg, einscan, bad_channels, bad_reasons, participant, overrides]
     properties:
       study_config: {$ref: "#/$defs/path"}
       subject: {$ref: "#/$defs/label"}
@@ -187,9 +187,11 @@ $defs:
       cmeg:
         type: object
         additionalProperties: false
-        required: [emptyroom_prefix, task_prefix]
+        required: [emptyroom_prefix]
         properties:
           emptyroom_prefix: {type: string, minLength: 1}
+          # The task recording of a session with one run; with runs: (below), each run has its own.
+          # bids_config.py checks that exactly one of the two is given.
           task_prefix: {type: string, minLength: 1}
       einscan:
         type: object
@@ -199,11 +201,24 @@ $defs:
           xfm_file: {type: string, minLength: 1}
           xyz_file: {type: string, minLength: 1}
       eye:
-        type: object
+        type: [object, "null"]          # null: an empty eye: section (with runs:, each run names its .edf)
         additionalProperties: false
-        required: [edf_file]
         properties:
+          # One run: "auto" or the file name. With runs:, each run has its own edf_file instead.
           edf_file: {type: string, minLength: 1}
+      # Several runs of the task in this session, each its own cMEG recording and .edf
+      runs:
+        type: array
+        minItems: 1
+        items:
+          type: object
+          additionalProperties: false
+          required: [run, task_prefix]
+          properties:
+            run: {$ref: "#/$defs/label"}
+            task_prefix: {type: string, minLength: 1}
+            edf_file: {type: [string, "null"], minLength: 1}   # null: no eye tracking in this run
+            behav_files: {type: string, minLength: 1}          # this run's logs in raw/behav/ (a pattern)
       bad_channels:
         anyOf:
           - {$ref: "#/$defs/string_list"}

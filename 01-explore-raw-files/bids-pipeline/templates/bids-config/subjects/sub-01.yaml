@@ -31,7 +31,23 @@ session: "01"
 #  prefixes it found.
 cmeg:
   emptyroom_prefix: "20260929_125813"   # the empty-room (noise) recording
-  task_prefix: "20260929_134022"        # the task recording
+  task_prefix: "20260929_134022"        # the task recording (one run; see "Several runs" below)
+
+#  Several runs of the task in this session, each its own recording (and its own .edf)?
+#  Remove task_prefix above and edf_file under eye: below, and list the runs instead, in
+#  order. Each run gets a run- label in the BIDS file names (sub-01_ses-01_task-..._run-01_meg.fif).
+#  All runs share the empty-room recording and the head digitization above.
+#    runs:
+#      - run: "01"                          # letters and digits only, in quotes
+#        task_prefix: "20260929_134022"     # its <prefix>_cMEG_Data folder
+#        edf_file: "MP0929R1.EDF"           # its .edf in raw/eye/ (null: no eye tracking in this run)
+#      - run: "02"
+#        task_prefix: "20260929_141510"
+#        edf_file: "MP0929R2.EDF"
+#  Behavioral logs (raw/behav/): if PsychoPy wrote one set for the whole session, there's nothing
+#  to add; they go into the dataset once, without a run- label. If each run has its own, add
+#  behav_files: to every run, a pattern that picks that run's .csv files, e.g.
+#        behav_files: "*_R1_task-oddballftcued_*.csv"
 
 
 # -------------------------------------------------------------------------------------
@@ -46,8 +62,9 @@ einscan:
 #  The eye tracking (raw/eye/)
 # -------------------------------------------------------------------------------------
 eye:
-  # The EyeLink .edf file. "auto" = the one .edf in raw/eye/ (the pipeline stops if it
-  # finds none or several). Or its file name, e.g. "MP0929.EDF".
+  # The EyeLink .edf file (one run). "auto" = the one .edf in raw/eye/ (the pipeline stops if
+  # it finds none or several). Or its file name, e.g. "MP0929.EDF". With runs:, remove this:
+  # each run names its own.
   edf_file: "auto"
 
 

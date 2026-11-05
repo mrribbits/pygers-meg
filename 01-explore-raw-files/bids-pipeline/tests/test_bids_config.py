@@ -19,6 +19,10 @@ The tests (see tests/README.md for more):
                                          "sub-01" as a label, ...) are reported
   test_study_without_sessions            with sessions: false, nothing contains "ses-"
   test_sessions_must_match_the_study     a subject file that disagrees with sessions: is reported
+  test_runs                              a session with runs: gets per-run settings (recording, .edf,
+                                         file names with run-NN); 03 and 06 are the same for every run
+  test_run_mistakes_are_caught           runs: mistakes (both task_prefix and runs:, a run listed
+                                         twice, edf_file "auto" or missing) are reported
 
 If one fails after you changed a notebook, see "When you change a notebook" in
 bids-pipeline/README.md.
@@ -230,6 +234,72 @@ def test_sessions_must_match_the_study():
     p = subject_file.parent.parent / "global-study.yaml"
     p.write_text(p.read_text(encoding="utf-8").replace("  sessions: true", "  sessions: false"), encoding="utf-8")
     assert any("set session: null" in x for x in bc.check(bc.load(subject_file)))
+
+
+def with_runs(subject_file: Path, edf_files=("R1.EDF", "R2.EDF")) -> Path:
+    """Turn filled_config()'s subject file into a session with two runs: runs 01 and 02, each with
+    its own recording and .edf (None: that run has no eye tracking). The .edf files are created."""
+    text = subject_file.read_text(encoding="utf-8")
+    text = text.replace('  task_prefix: "20260929_134022"        # the task recording (one run; see "Several runs" below)\n', "")
+    text = text.replace('  edf_file: "auto"\n', "")
+    runs = "runs:\n"
+    for i, edf in enumerate(edf_files, 1):
+        runs += f'  - run: "0{i}"\n    task_prefix: "20260929_14{i}000"\n    edf_file: {"null" if edf is None else repr(edf)}\n'
+    subject_file.write_text(text + "\n" + runs, encoding="utf-8")
+    eye = subject_file.parent.parent.parent / "sourcedata" / "sub-01" / "ses-01" / "raw" / "eye"
+    (eye / "test.EDF").unlink()
+    for edf in edf_files:
+        if edf:
+            (eye / edf).write_bytes(b"x")
+    return subject_file
+
+
+def test_runs():
+    cfg = bc.load(with_runs(filled_config()))
+    assert bc.check(cfg) == []
+    assert cfg.run_labels == ["01", "02"]
+    inputs = bc.find_inputs(cfg)
+    assert inputs["edf_file"] is None and inputs["edf_files"]["02"].name == "R2.EDF"
+    one, two = bc.notebook_settings(cfg, inputs, run="01"), bc.notebook_settings(cfg, inputs, run="02")
+    assert all(two[nb]["RUN"] == "02" for nb in ("01", "02", "04", "05"))
+    assert two["01"]["DATA_PREFIX"] == "20260929_142000" and two["01"]["ER_PREFIX"] == "20260929_125813"
+    assert Path(two["02"]["EDF_FILE"]).name == "R2.EDF"
+    assert Path(two["04"]["FIF_DATA"]).name == "sub-01_ses-01_task-oddballftcued_run-02_meg.fif"
+    assert Path(two["04"]["FIF_EMPTYROOM"]).name == "sub-01_ses-01_task-noise_meg.fif"   # shared
+    assert one["03"] == two["03"] and one["06"] == two["06"]
+    # The shared empty room: converted by the first run's 01; each run's 04 knows the other runs' candidates
+    assert one["01"]["CONVERT_EMPTYROOM"] and not two["01"]["CONVERT_EMPTYROOM"]
+    assert list(two["04"]["OTHER_RUN_CANDIDATES"]) == ["01"]
+    assert two["04"]["OTHER_RUN_CANDIDATES"]["01"].endswith("task-oddballftcued_run-01_meg_bad_channel_candidates.tsv")
+    assert bc.notebook_settings(cfg, inputs)["01"]["RUN"] == "01"                      # default: first run
+    # A run without eye tracking
+    cfg = bc.load(with_runs(filled_config(), edf_files=("R1.EDF", None)))
+    assert bc.check(cfg) == []
+    assert bc.notebook_settings(cfg, bc.find_inputs(cfg), run="02")["02"]["EDF_FILE"] is None
+
+
+def test_run_mistakes_are_caught():
+    def problems(edit):
+        subject_file = with_runs(filled_config())
+        subject_file.write_text(edit(subject_file.read_text(encoding="utf-8")), encoding="utf-8")
+        return bc.check(bc.load(subject_file))
+    cases = [
+        (lambda t: t.replace('emptyroom_prefix: "20260929_125813"',
+                             'emptyroom_prefix: "20260929_125813"\n  task_prefix: "x"'), "not both"),
+        (lambda t: t.replace('run: "02"', 'run: "01"'), "more than once"),
+        (lambda t: t.replace("edf_file: 'R2.EDF'", 'edf_file: "auto"'), "can't tell"),
+        (lambda t: t.replace("    edf_file: 'R2.EDF'\n", ""), "has no edf_file"),
+        (lambda t: t.replace('run: "02"', 'run: "run-02"'), "letters and digits"),
+        (lambda t: t.replace("runs:\n", "runz:\n"), "misspelled"),
+    ]
+    for edit, expect in cases:
+        found = problems(edit)
+        assert any(expect in p for p in found), (expect, found)
+    # Neither a task_prefix nor runs:
+    subject_file = filled_config()
+    subject_file.write_text(subject_file.read_text(encoding="utf-8").replace(
+        '  task_prefix: "20260929_134022"', ""), encoding="utf-8")
+    assert any("no task recording" in p for p in bc.check(bc.load(subject_file)))
 
 
 if __name__ == "__main__":
