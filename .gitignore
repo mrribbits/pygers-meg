@@ -17,3 +17,5 @@ my_*.ipynb
 # Python caches and the SMB share's leftover placeholders
 __pycache__/
 .smbdelete*
+*-Copy*.ipynb
+code/heuristic.py
