@@ -19,3 +19,4 @@ __pycache__/
 .smbdelete*
 *-Copy*.ipynb
 code/heuristic.py
+install_edf2asc.sh
