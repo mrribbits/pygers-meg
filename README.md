@@ -217,18 +217,19 @@ Host scotty scotty.pni.princeton.edu
     ControlPath ~/.ssh/cm-%r@%h:%p
     ControlPersist 4h
 ```
-### 1.2 Download the `scotty-jupyter` script to your Mac
+### 1.2 Download the `scotty-jupyter` and `scotty-shell` scripts to your Mac
 
-#### 1.2.1 Edit the script
-* Add your NETID, PROJECT_DIR, and CONDA_ENV
+#### 1.2.1 Edit the scripts
+* In each script, add your NETID, PROJECT_DIR, and CONDA_ENV
 
 #### 1.2.2 Run these lines in your Mac's Terminal:
 ```bash
-   mkdir -p ~/bin && mv ~/Downloads/scotty-jupyter ~/bin/ && chmod +x ~/bin/scotty-jupyter
+   mkdir -p ~/bin && mv ~/Downloads/scotty-jupyter ~/Downloads/scotty-shell ~/bin/
+   chmod +x ~/bin/scotty-jupyter ~/bin/scotty-shell
    echo 'export PATH="$HOME/bin:$PATH"' >> ~/.zshrc && source ~/.zshrc
 ```
-These lines will create a ~/bin folder and move the script from ~/Downloads to it.
-It will then make the script executable and add it to your path.
+These lines will create a ~/bin folder and move the scripts from ~/Downloads to it.
+They will then make the scripts executable and add ~/bin to your path.
 
 ### 1.3 Now you can use the `scotty-jupyter` script. 
 
@@ -239,5 +240,14 @@ It will then make the script executable and add it to your path.
 * And launch JupyterLab so it prints the URL you can use to paste into your Mac's browser.
 * Pressing Ctrl-C twice stops Jupyter and closes the tunnel.
 
+### 1.4 Or use the `scotty-shell` script for a terminal on scotty first
 
+`scotty-shell` does everything `scotty-jupyter` does except start JupyterLab. It leaves you at a terminal prompt on scotty, so you can switch git branches or do other work before (or after) starting Jupyter.
 
+* Like `scotty-jupyter`, it SSHes into scotty with the tunnel on your own port, `cd`s you into the pygers-meg folder, and activates your pygers-meg environment.
+* It prints the folder, environment, and current git branch, then waits at the prompt.
+* Type `jl` to start JupyterLab on the tunneled port. It prints the URL to paste into your Mac's browser, as in 0.1.4.
+* Press Ctrl-C twice to stop Jupyter and return to the prompt. You can then change branches and type `jl` again.
+* Type `exit` to leave scotty and close the tunnel.
+
+Both scripts use the same port, so run only one of them at a time.

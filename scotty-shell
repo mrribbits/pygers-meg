@@ -1,0 +1,102 @@
+#!/usr/bin/env bash
+# scotty-shell — open an SSH tunnel to scotty and give you a terminal prompt there, already in your
+# project folder with your conda environment active. JupyterLab is NOT started for you, so you can
+# change git branches or do other work first. Type `jl` at the prompt when you want JupyterLab.
+#
+# Usage: scotty-shell            (your own port, the same every time; see scotty-jupyter for why)
+#        scotty-shell 6123       (a specific port)
+#
+# At the scotty prompt:
+#   jl      start JupyterLab on the tunneled port (Ctrl-C twice stops it; type jl again to restart)
+#   exit    leave scotty and close the tunnel
+#
+# Uses the same port as scotty-jupyter, so don't run both at the same time.
+
+# ---- user settings ---------------------------------------------------------------
+NETID="your_netid"
+HOST="scotty.pni.princeton.edu"
+PROJECT_DIR="/jukebox/[yourpath]/pygers-meg"
+CONDA_ENV="pygers-meg"
+# -----------------------------------------------------------------------------
+
+MAX_TRIES=10   # how many ports to try if yours is busy
+BUSY=97        # exit code meaning "port taken on scotty" (unusual, so a normal `exit` never matches it)
+
+port_ok() {
+  local p=$1
+  (( p < 4000 || p > 9999 )) && return 1
+  (( p >= 8800 && p <= 8899 )) && return 1
+  (( p == 5000 || p == 7000 )) && return 1      # macOS AirPlay Receiver uses these
+  # also skip ports already in use on this Mac
+  lsof -nP -iTCP:"$p" -sTCP:LISTEN >/dev/null 2>&1 && return 1
+  return 0
+}
+
+next_port() {
+  # The next allowed port after $1 (wrapping from 9999 back to 4000)
+  local p=$1
+  while :; do
+    p=$(( p + 1 )); (( p > 9999 )) && p=4000
+    port_ok "$p" && { echo "$p"; return; }
+  done
+}
+
+if [[ -n "$1" ]]; then
+  PORT=$1
+  port_ok "$PORT" || { echo "Port $PORT is excluded or busy on this Mac."; exit 1; }
+else
+  # Your own port: a number from 4000-9999 worked out from your NetID (the same every time)
+  sum=$(printf '%s' "$NETID" | cksum | cut -d' ' -f1)
+  PORT=$(( 4000 + sum % 6000 ))
+  port_ok "$PORT" || PORT=$(next_port "$PORT")
+fi
+
+for (( try = 1; try <= MAX_TRIES; try++ )); do
+  echo "Using port $PORT  →  after you type 'jl' on scotty, JupyterLab will be at http://localhost:${PORT}/lab"
+
+  # Commands run on scotty. Plain \${...} values are filled in here on the Mac; \$ waits until scotty.
+  # They write a small temporary startup file and open an interactive shell that reads it.
+  REMOTE_CMD=$(cat <<EOF
+if ss -ltn "sport = :${PORT}" | grep -q LISTEN; then
+  echo "Port ${PORT} is already taken on scotty."
+  exit ${BUSY}
+fi
+RC=\$(mktemp)
+cat > "\$RC" <<'RCEOF'
+[ -f ~/.bashrc ] && source ~/.bashrc
+rm -f "\$SCOTTY_RC"
+${MODULE_LOAD:-true}
+cd "${PROJECT_DIR}" || echo "Warning: cannot cd to ${PROJECT_DIR}"
+eval "\$(conda shell.bash hook)"
+conda activate "${CONDA_ENV}" || echo "Warning: cannot activate conda env ${CONDA_ENV}"
+export JLPORT=${PORT}
+jl() {
+  jupyter lab --no-browser --ip=127.0.0.1 --port=${PORT} --ServerApp.port_retries=0 \
+    --ServerApp.custom_display_url=http://localhost:${PORT} "\$@"
+}
+echo
+echo "Ready in \$(pwd)  [env: ${CONDA_ENV}]  [branch: \$(git branch --show-current 2>/dev/null || echo n/a)]"
+echo "Type 'jl' to start JupyterLab on port ${PORT}; 'exit' closes the tunnel."
+RCEOF
+SCOTTY_RC="\$RC" exec bash --rcfile "\$RC" -i
+EOF
+)
+
+  # Escape any single quotes for the remote shell, then run it in a login bash.
+  REMOTE_Q=${REMOTE_CMD//\'/\'\\\'\'}
+
+  ssh -t \
+    -o ExitOnForwardFailure=yes \
+    -L "${PORT}:localhost:${PORT}" \
+    "${NETID}@${HOST}" \
+    "bash -lc '${REMOTE_Q}'"
+  rc=$?
+
+  # BUSY = the port is taken on scotty (by someone else): try the next one. Anything else: done.
+  [[ $rc -ne $BUSY ]] && exit $rc
+  PORT=$(next_port "$PORT")
+  echo "Trying port $PORT instead."
+done
+
+echo "No free port found after $MAX_TRIES tries. Run the script again, or give a port: scotty-shell 6123"
+exit $BUSY
