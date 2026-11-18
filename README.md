@@ -15,7 +15,7 @@ Jupyter notebooks from the Pygers-MEG user group.
 | Preprocessing Notebooks (02-preprocessing/) | What it covers |
 |---|---|
 | [`01_Explore_Data_and_Sensor_Quality.ipynb`](02-preprocessing/01_Explore_Data_and_Sensor_Quality.ipynb) | A first look at the recording and a check of every OPM sensor: flat and noisy channels, power spectra, time courses; saves the bad channels with reasons |
-| [`02_Downsample_Filter.ipynb`] (02-preprocessing/02_Downsample_filter.ipynb) | Filter and downsample the eye-synced task recording and empty room recording |
+| [`02_Downsample_Filter.ipynb`](02-preprocessing/02_Downsample_filter.ipynb) | Filter and downsample the eye-synced task recording and empty room recording |
 | [`TBD1_FreeSurfer_recon-all.ipynb`](02-preprocessing/TBD1_FreeSurfer_recon-all.ipynb) | Generate surface reconstructions and BEM/scalp surfaces (step number to be assigned) |
 | [`TBD2_Coreg_and_Forward.ipynb`](02-preprocessing/TBD2_Coreg_and_Forward.ipynb) | Perform coregistration, create surface and volume source spaces and forward solutions (step number to be assigned) |
 ---
