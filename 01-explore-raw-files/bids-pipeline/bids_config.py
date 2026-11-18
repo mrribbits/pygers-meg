@@ -791,6 +791,7 @@ def notebook_settings(cfg: Config, inputs: dict | None = None, summary_file=None
         "ET_PREFIX": sync["et_prefix"],
         "RESTORE_NAN": sync["restore_nan"],
         "BLINK_ANNOT": sync["blink_annot"], "MISSING_ANNOT": sync["missing_annot"],
+        "SACCADE_ANNOT": sync["saccade_annot"],
         "ANALOG_EYE_CHANNELS": sync["analog_eye_channels"],
         "MATCH_MODE": sync["match_mode"], "CODE_PATTERN": sync["code_pattern"],
         "NAME_PATTERN": sync["name_pattern"], "NAME_MAP": sync["name_map"],
