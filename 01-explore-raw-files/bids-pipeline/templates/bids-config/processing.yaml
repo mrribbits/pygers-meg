@@ -254,6 +254,7 @@ eye_sync:
   restore_nan: false              # true = put NaN back where eye data were missing (blinks, lost tracking)
   blink_annot: "ET_blink"         # annotation names in the synced FIF (a "BAD_" start makes MNE drop epochs)
   missing_annot: "ET_missing"
+  add_saccades: true              # true = annotate every saccade (false = leave them out)
   saccade_annot: "ET_saccade"     # saccades, not counting the ones around blinks (keep the "ET_" start)
   add_fixations: false            # true = also annotate every fixation (for fixation-locked analyses)
   fixation_annot: "ET_fixation"   # used only if add_fixations is true
