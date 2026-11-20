@@ -290,8 +290,9 @@ $defs:
       events:
         type: object
         additionalProperties: false
+        # durations and extra_columns are optional: left out = none (every duration n/a, no extra columns)
         required: [source, stim_channel, shortest_event, consecutive, min_duration, event_id, drop_unmapped,
-                   trial_type_levels, durations, extra_columns, stimulus_presentation]
+                   trial_type_levels, stimulus_presentation]
         properties:
           source: {enum: ["stim", "annotations"]}
           stim_channel: {anyOf: [{type: string, minLength: 1}, {type: "null"}]}
