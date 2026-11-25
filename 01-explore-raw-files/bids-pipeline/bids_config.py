@@ -744,8 +744,9 @@ def notebook_settings(cfg: Config, inputs: dict | None = None, summary_file=None
         "TRIG_CUTOFFS": meg["trig_cutoffs"], "MISC_CUTOFFS": meg["misc_cutoffs"],
         "CHANNEL_DESCRIPTIONS": meg["channel_descriptions"],
         # 10.4 events / 10.5 coordinate system
-        "TRIAL_TYPE_LEVELS": ev["trial_type_levels"], "DURATIONS": ev["durations"],
-        "EXTRA_COLUMNS": ev["extra_columns"], "STIMULUS_PRESENTATION": ev["stimulus_presentation"],
+        # durations and extra_columns are optional: left out = none
+        "TRIAL_TYPE_LEVELS": ev["trial_type_levels"], "DURATIONS": ev.get("durations") or {},
+        "EXTRA_COLUMNS": ev.get("extra_columns") or {}, "STIMULUS_PRESENTATION": ev["stimulus_presentation"],
         "APPLY_COORDSYSTEM_DESCRIPTION": meg["coordsystem"]["apply"],
         "COORDSYSTEM_DESCRIPTION": meg["coordsystem"]["description"],
         # 11 dataset-level files
@@ -791,6 +792,8 @@ def notebook_settings(cfg: Config, inputs: dict | None = None, summary_file=None
         "ET_PREFIX": sync["et_prefix"],
         "RESTORE_NAN": sync["restore_nan"],
         "BLINK_ANNOT": sync["blink_annot"], "MISSING_ANNOT": sync["missing_annot"],
+        "ADD_SACCADES": sync["add_saccades"], "SACCADE_ANNOT": sync["saccade_annot"],
+        "ADD_FIXATIONS": sync["add_fixations"], "FIXATION_ANNOT": sync["fixation_annot"],
         "ANALOG_EYE_CHANNELS": sync["analog_eye_channels"],
         "MATCH_MODE": sync["match_mode"], "CODE_PATTERN": sync["code_pattern"],
         "NAME_PATTERN": sync["name_pattern"], "NAME_MAP": sync["name_map"],

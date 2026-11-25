@@ -31,6 +31,7 @@ also works, if pytest is installed.)
 | `test_mistakes_are_caught` | Typical mistakes are reported: a misspelled setting, `overwrite: maybe`, `subject: "sub-01"`, an event without a description, a sync name that isn't an event, an undescribed participant column, an unknown `{placeholder}`, a bad CHANGES date, sourcedata inside bids, a missing MRI container in a study with MRI. |
 | `test_study_without_sessions` | With `sessions: false`, no setting or path contains `ses-`. |
 | `test_sessions_must_match_the_study` | A subject file whose `session:` disagrees with the study's `sessions:` setting is reported. |
+| `test_durations_and_extra_columns_are_optional` | A processing.yaml without `events.durations` and `events.extra_columns` is complete, and notebook 04 gets `{}` for both. |
 | `test_runs` | A session with `runs:` gets per-run settings (its recording, its .edf, file names with `run-NN`), and 03 and 06 get the same settings for every run. |
 | `test_run_mistakes_are_caught` | `runs:` mistakes are reported: both `cmeg.task_prefix` and `runs:`, neither, a run listed twice, `edf_file: "auto"` or no `edf_file` in a run. |
 

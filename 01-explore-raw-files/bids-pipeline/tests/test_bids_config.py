@@ -19,6 +19,9 @@ The tests (see tests/README.md for more):
                                          "sub-01" as a label, ...) are reported
   test_study_without_sessions            with sessions: false, nothing contains "ses-"
   test_sessions_must_match_the_study     a subject file that disagrees with sessions: is reported
+  test_durations_and_extra_columns_are_optional
+                                         processing.yaml without events.durations and
+                                         events.extra_columns is complete; notebook 04 gets {}
   test_runs                              a session with runs: gets per-run settings (recording, .edf,
                                          file names with run-NN); 03 and 06 are the same for every run
   test_run_mistakes_are_caught           runs: mistakes (both task_prefix and runs:, a run listed
@@ -300,6 +303,18 @@ def test_run_mistakes_are_caught():
     subject_file.write_text(subject_file.read_text(encoding="utf-8").replace(
         '  task_prefix: "20260929_134022"', ""), encoding="utf-8")
     assert any("no task recording" in p for p in bc.check(bc.load(subject_file)))
+
+
+def test_durations_and_extra_columns_are_optional():
+    subject_file = filled_config()
+    processing = subject_file.parent.parent / "processing.yaml"
+    text = processing.read_text(encoding="utf-8")
+    start, end = text.index("  durations:"), text.index("  # How the stimuli were presented")
+    processing.write_text(text[:start] + text[end:], encoding="utf-8")     # both blocks left out
+    cfg = bc.load(subject_file)
+    assert bc.check(cfg) == []
+    nb04 = bc.notebook_settings(cfg)["04"]
+    assert nb04["DURATIONS"] == {} and nb04["EXTRA_COLUMNS"] == {}
 
 
 if __name__ == "__main__":

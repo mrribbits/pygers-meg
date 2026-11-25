@@ -119,7 +119,9 @@ events:
     blink: "Onset of the 500 ms BLINK screen at the end of every trial (blinks allowed here only)."
     error feedback: "Feedback screen (400 ms) after a missed or wrong-hand response."
 
-  # The duration column of _events.tsv, in seconds, per event name. Events not listed: n/a.
+  # Optional: the duration column of _events.tsv, in seconds, per event name. Events not
+  # listed get n/a (unknown or variable duration, e.g. a stimulus shown until the response).
+  # Leave the block out (or write durations: {}) for no durations at all.
   durations:
     standard: 0.4
     deviant: 0.4
@@ -128,8 +130,8 @@ events:
     blink: 0.5
     error feedback: 0.4
 
-  # Extra columns for _events.tsv: a description (and units), and the value per event name.
-  # Event names not listed get n/a.
+  # Optional: extra columns for _events.tsv: a description (and units), and the value per
+  # event name. Event names not listed get n/a. Leave the block out (or extra_columns: {}) for none.
   extra_columns:
     stim_frequency:
       Description: "Tone frequency"
@@ -254,6 +256,10 @@ eye_sync:
   restore_nan: false              # true = put NaN back where eye data were missing (blinks, lost tracking)
   blink_annot: "ET_blink"         # annotation names in the synced FIF (a "BAD_" start makes MNE drop epochs)
   missing_annot: "ET_missing"
+  add_saccades: true              # true = annotate every saccade (false = leave them out)
+  saccade_annot: "ET_saccade"     # saccades, not counting the ones around blinks (keep the "ET_" start)
+  add_fixations: false            # true = also annotate every fixation (for fixation-locked analyses)
+  fixation_annot: "ET_fixation"   # used only if add_fixations is true
 
   # The MEG's analog eye channels (BNC 11-13), compared with the eye-tracker data in the
   # final check. null = skip that one.

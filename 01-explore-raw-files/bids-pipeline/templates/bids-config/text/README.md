@@ -30,7 +30,7 @@ feedback. Tones were played through the VPixx DATAPixx system (48 kHz) and room 
 their timing scheduled by the VPixx hardware. The instructions shown to the participant are in
 the Instructions field of the task's _meg.json. Event codes in _events.tsv (trial_type = value):
 {event_codes}.
-Event onsets were decoded from the trigger channel; durations are given in _events.tsv.
+Event onsets were decoded from the trigger channel; durations, where known, are given in _events.tsv.
 
 ## Apparatus
 OPM-MEG: Cerca Magnetics system with QuSpin QZFM Gen-3 sensors, inside a magnetically shielded

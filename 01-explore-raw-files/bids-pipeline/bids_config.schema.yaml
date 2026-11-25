@@ -290,8 +290,9 @@ $defs:
       events:
         type: object
         additionalProperties: false
+        # durations and extra_columns are optional: left out = none (every duration n/a, no extra columns)
         required: [source, stim_channel, shortest_event, consecutive, min_duration, event_id, drop_unmapped,
-                   trial_type_levels, durations, extra_columns, stimulus_presentation]
+                   trial_type_levels, stimulus_presentation]
         properties:
           source: {enum: ["stim", "annotations"]}
           stim_channel: {anyOf: [{type: string, minLength: 1}, {type: "null"}]}
@@ -335,7 +336,8 @@ $defs:
         additionalProperties: false
         required: [recording, match_mode, code_pattern, name_pattern, name_map, meg_trial_types,
                    first_pass_tolerance_s, final_tolerance_s, outlier_ms, deriv_name, make_synced_fif,
-                   et_prefix, restore_nan, blink_annot, missing_annot, analog_eye_channels,
+                   et_prefix, restore_nan, blink_annot, missing_annot, add_saccades, saccade_annot,
+                   add_fixations, fixation_annot, analog_eye_channels,
                    window_s, pause_factor, blink_preview]
         properties:
           recording: {$ref: "#/$defs/label"}
@@ -353,6 +355,10 @@ $defs:
           restore_nan: {type: boolean}
           blink_annot: {type: string, minLength: 1}
           missing_annot: {type: string, minLength: 1}
+          add_saccades: {type: boolean}
+          saccade_annot: {type: string, minLength: 1}
+          add_fixations: {type: boolean}
+          fixation_annot: {type: string, minLength: 1}
           analog_eye_channels:
             type: object
             additionalProperties: false
